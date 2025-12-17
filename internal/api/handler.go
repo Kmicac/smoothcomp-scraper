@@ -376,6 +376,43 @@ func (h *Handler) GetJobByID(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// ScrapeEventAthletes triggers scraping of athletes from a specific event
+func (h *Handler) ScrapeEventAthletes(w http.ResponseWriter, r *http.Request) {
+	eventID := r.URL.Query().Get("event_id")
+	eventName := r.URL.Query().Get("event_name")
+
+	if eventID == "" {
+		respondJSON(w, http.StatusBadRequest, models.APIResponse{
+			Success: false,
+			Error:   "event_id is required",
+		})
+		return
+	}
+
+	if eventName == "" {
+		eventName = "Event " + eventID
+	}
+
+	logger.Info("Manual event athlete scraping triggered",
+		zap.String("event_id", eventID),
+		zap.String("event_name", eventName))
+
+	go func() {
+		if err := h.scraper.ScrapeEventAthletes(eventID, eventName); err != nil {
+			logger.Error("Failed to scrape event athletes", zap.Error(err))
+		}
+	}()
+
+	respondJSON(w, http.StatusAccepted, models.APIResponse{
+		Success: true,
+		Message: "Event athlete scraping started",
+		Data: map[string]string{
+			"event_id":   eventID,
+			"event_name": eventName,
+		},
+	})
+}
+
 // respondJSON sends a JSON response
 func respondJSON(w http.ResponseWriter, status int, data interface{}) {
 	w.Header().Set("Content-Type", "application/json")

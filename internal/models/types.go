@@ -49,6 +49,11 @@ type Athlete struct {
 	ProfileURL        string `json:"profile_url"`
 	AvatarURL         string `json:"avatar_url"`
 
+	// NUEVOS CAMPOS AGREGADOS
+	BirthYear       int    `json:"birth_year"`       // Año de nacimiento
+	ImageURL        string `json:"image_url"`        // URL de la imagen del atleta
+	AffiliationName string `json:"affiliation_name"` // Afiliación (opcional)
+
 	// Win Statistics
 	TotalWins        int `json:"total_wins"`
 	WinsBySubmission int `json:"wins_by_submission"`
@@ -69,7 +74,8 @@ type Athlete struct {
 	UpdatedAt time.Time `json:"updated_at" gorm:"autoUpdateTime"`
 
 	// Relationships
-	Academy *Academy `json:"academy,omitempty" gorm:"foreignKey:AcademyExternalID;references:ExternalID"`
+	Academy            *Academy            `json:"academy,omitempty" gorm:"foreignKey:AcademyExternalID;references:ExternalID"`
+	EventRegistrations []EventRegistration `json:"event_registrations,omitempty" gorm:"foreignKey:AthleteID"`
 }
 
 // ScrapeJob represents a scraping job execution
@@ -114,4 +120,31 @@ type StatusResponse struct {
 	CronExpression  string     `json:"cron_expression"`
 	TotalAcademies  int64      `json:"total_academies"`
 	TotalAthletes   int64      `json:"total_athletes"`
+}
+
+// EventRegistration representa la inscripción de un atleta en un evento
+type EventRegistration struct {
+	ID               uint      `json:"id" gorm:"primaryKey"`
+	AthleteID        uint      `json:"athlete_id" gorm:"not null;index"`
+	EventID          string    `json:"event_id" gorm:"not null;index"`
+	EventName        string    `json:"event_name" gorm:"not null"`
+	Division         string    `json:"division" gorm:"not null"`     // Men/Women
+	AgeCategory      string    `json:"age_category" gorm:"not null"` // Adults/Masters/Juveniles
+	Rank             string    `json:"rank" gorm:"not null"`         // Beginner/Intermediate/Advanced
+	WeightClass      string    `json:"weight_class" gorm:"not null"` // -60 kg, -65 kg
+	ActualWeight     float64   `json:"actual_weight"`                // Peso real en el pesaje
+	Seed             int       `json:"seed" gorm:"default:0"`        // Seed en el bracket
+	Ranking          int       `json:"ranking" gorm:"default:0"`     // Ranking global
+	EventCardURL     string    `json:"event_card_url"`
+	RegistrationDate time.Time `json:"registration_date"`
+	CreatedAt        time.Time `json:"created_at" gorm:"autoCreateTime"`
+	UpdatedAt        time.Time `json:"updated_at" gorm:"autoUpdateTime"`
+
+	// Relación con atleta
+	Athlete Athlete `json:"athlete,omitempty" gorm:"foreignKey:AthleteID;constraint:OnDelete:CASCADE"`
+}
+
+// TableName especifica el nombre de la tabla
+func (EventRegistration) TableName() string {
+	return "event_registrations"
 }

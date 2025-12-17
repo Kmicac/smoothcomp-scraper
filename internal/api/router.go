@@ -24,6 +24,7 @@ func NewRouter(cfg *config.Config, scheduler *scheduler.Scheduler) *mux.Router {
 	api.HandleFunc("/scrape/academies", handler.ScrapeAcademies).Methods("POST")
 	api.HandleFunc("/scrape/athletes", handler.ScrapeAthletes).Methods("POST")
 	api.HandleFunc("/scrape/all", handler.ScrapeAll).Methods("POST")
+	api.HandleFunc("/scrape/event/athletes", handler.ScrapeEventAthletes).Methods("POST")
 
 	// Data retrieval
 	api.HandleFunc("/academies", handler.GetAcademies).Methods("GET")

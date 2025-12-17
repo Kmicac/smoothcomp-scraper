@@ -30,6 +30,7 @@ func InitDatabase(dbPath string) error {
 	err = DB.AutoMigrate(
 		&models.Academy{},
 		&models.Athlete{},
+		&models.EventRegistration{}, // ← AGREGAR ESTA LÍNEA
 		&models.ScrapeJob{},
 		&models.ScheduleConfig{},
 	)
