@@ -100,18 +100,7 @@ func (h *Handler) ScrapeAcademies(w http.ResponseWriter, r *http.Request) {
 
 // ScrapeAthletes triggers manual athlete scraping
 func (h *Handler) ScrapeAthletes(w http.ResponseWriter, r *http.Request) {
-	logger.Info("Manual athlete scraping triggered")
-
-	go func() {
-		if err := h.scraper.ScrapeAthletes(); err != nil {
-			logger.Error("Failed to scrape athletes", zap.Error(err))
-		}
-	}()
-
-	respondJSON(w, http.StatusAccepted, models.APIResponse{
-		Success: true,
-		Message: "Athlete scraping started",
-	})
+	h.ScrapeEventAthletes(w, r)
 }
 
 // ScrapeAll triggers scraping of both academies and athletes
@@ -380,6 +369,7 @@ func (h *Handler) GetJobByID(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) ScrapeEventAthletes(w http.ResponseWriter, r *http.Request) {
 	eventID := r.URL.Query().Get("event_id")
 	eventName := r.URL.Query().Get("event_name")
+	eventURL := r.URL.Query().Get("event_url")
 
 	if eventID == "" {
 		respondJSON(w, http.StatusBadRequest, models.APIResponse{
@@ -395,10 +385,11 @@ func (h *Handler) ScrapeEventAthletes(w http.ResponseWriter, r *http.Request) {
 
 	logger.Info("Manual event athlete scraping triggered",
 		zap.String("event_id", eventID),
-		zap.String("event_name", eventName))
+		zap.String("event_name", eventName),
+		zap.String("event_url", eventURL))
 
 	go func() {
-		if err := h.scraper.ScrapeEventAthletes(eventID, eventName); err != nil {
+		if err := h.scraper.ScrapeEventAthletes(eventID, eventName, eventURL); err != nil {
 			logger.Error("Failed to scrape event athletes", zap.Error(err))
 		}
 	}()
@@ -409,6 +400,107 @@ func (h *Handler) ScrapeEventAthletes(w http.ResponseWriter, r *http.Request) {
 		Data: map[string]string{
 			"event_id":   eventID,
 			"event_name": eventName,
+			"event_url":  eventURL,
+		},
+	})
+}
+
+// ScrapeAthleteProfile triggers scraping of a single athlete profile
+func (h *Handler) ScrapeAthleteProfile(w http.ResponseWriter, r *http.Request) {
+	athleteID := r.URL.Query().Get("athlete_id")
+	profileURL := r.URL.Query().Get("profile_url")
+	resolvedID := athleteID
+	if resolvedID == "" && profileURL != "" {
+		resolvedID = scraper.ExtractIDFromURL(profileURL)
+	}
+
+	if athleteID == "" && profileURL == "" {
+		respondJSON(w, http.StatusBadRequest, models.APIResponse{
+			Success: false,
+			Error:   "athlete_id or profile_url is required",
+		})
+		return
+	}
+
+	logger.Info("Manual athlete profile scraping triggered",
+		zap.String("athlete_id", athleteID),
+		zap.String("profile_url", profileURL))
+
+	if err := h.scraper.ScrapeAthleteProfile(athleteID, profileURL); err != nil {
+		logger.Error("Failed to scrape athlete profile", zap.Error(err))
+		respondJSON(w, http.StatusInternalServerError, models.APIResponse{
+			Success: false,
+			Error:   err.Error(),
+		})
+		return
+	}
+
+	if resolvedID == "" {
+		respondJSON(w, http.StatusOK, models.APIResponse{
+			Success: true,
+			Message: "Athlete profile scraping completed",
+		})
+		return
+	}
+
+	db := config.GetDB()
+	var athlete models.Athlete
+	if err := db.Where("external_id = ?", resolvedID).Preload("Academy").First(&athlete).Error; err != nil {
+		respondJSON(w, http.StatusNotFound, models.APIResponse{
+			Success: false,
+			Error:   "Athlete not found",
+		})
+		return
+	}
+
+	respondJSON(w, http.StatusOK, models.APIResponse{
+		Success: true,
+		Message: "Athlete profile scraping completed",
+		Data:    athlete,
+	})
+}
+
+// ScrapeAthleteProfiles triggers scraping of athlete profiles in batch
+func (h *Handler) ScrapeAthleteProfiles(w http.ResponseWriter, r *http.Request) {
+	query := r.URL.Query()
+	limit, _ := strconv.Atoi(query.Get("limit"))
+	if limit <= 0 {
+		limit = 50
+	}
+	if limit > 200 {
+		limit = 200
+	}
+
+	offset, _ := strconv.Atoi(query.Get("offset"))
+	if offset < 0 {
+		offset = 0
+	}
+
+	onlyMissing := true
+	if raw := query.Get("only_missing"); raw != "" {
+		if parsed, err := strconv.ParseBool(raw); err == nil {
+			onlyMissing = parsed
+		}
+	}
+
+	logger.Info("Manual athlete profiles scraping triggered",
+		zap.Int("limit", limit),
+		zap.Int("offset", offset),
+		zap.Bool("only_missing", onlyMissing))
+
+	go func() {
+		if _, err := h.scraper.ScrapeAthleteProfiles(limit, offset, onlyMissing); err != nil {
+			logger.Error("Failed to scrape athlete profiles", zap.Error(err))
+		}
+	}()
+
+	respondJSON(w, http.StatusAccepted, models.APIResponse{
+		Success: true,
+		Message: "Athlete profiles scraping started",
+		Data: map[string]interface{}{
+			"limit":        limit,
+			"offset":       offset,
+			"only_missing": onlyMissing,
 		},
 	})
 }

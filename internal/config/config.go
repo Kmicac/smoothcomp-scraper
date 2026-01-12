@@ -58,6 +58,7 @@ func LoadConfig() (*Config, error) {
 	viper.SetDefault("PORT", "8080")
 	viper.SetDefault("ENVIRONMENT", "development")
 	viper.SetDefault("SMOOTHCOMP_BASE_URL", "https://smoothcomp.com")
+	viper.SetDefault("USER_AGENT", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36")
 	viper.SetDefault("REQUEST_DELAY_MS", 2000)
 	viper.SetDefault("MAX_RETRIES", 3)
 	viper.SetDefault("RATE_LIMIT_REQUESTS", 10)

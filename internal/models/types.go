@@ -46,6 +46,7 @@ type Athlete struct {
 	CountryCode       string `json:"country_code"`
 	BeltRank          string `json:"belt_rank"`
 	Age               int    `json:"age"`
+	Gender            string `json:"gender"`
 	ProfileURL        string `json:"profile_url"`
 	AvatarURL         string `json:"avatar_url"`
 

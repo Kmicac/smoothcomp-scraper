@@ -1,13 +1,14 @@
 package scraper
 
 import (
+	"encoding/json"
 	"fmt"
-	"regexp"
+	"io"
+	"net/http"
 	"strconv"
 	"strings"
 	"time"
 
-	"github.com/gocolly/colly/v2"
 	"github.com/kmicac/smoothcomp-scraper/internal/config"
 	"github.com/kmicac/smoothcomp-scraper/internal/models"
 	"github.com/kmicac/smoothcomp-scraper/pkg/logger"
@@ -15,11 +16,115 @@ import (
 	"gorm.io/gorm"
 )
 
+// SmoothCompAPIResponse representa la respuesta de la API de participantes
+type SmoothCompAPIResponse struct {
+	Participants []Participant `json:"participants"`
+	Categories   []Category    `json:"categories"`
+}
+
+// Participant representa un grupo de participantes por categoría
+type Participant struct {
+	BracketID     int64          `json:"bracket_id"`
+	EntryID       int64          `json:"entry_id"`
+	EventID       int64          `json:"event_id"`
+	ID            int64          `json:"id"`
+	Name          string         `json:"name"` // e.g., "Men / Adults / Beginner / -60 kg"
+	Registrations []Registration `json:"registrations"`
+}
+
+// Registration representa la inscripción de un atleta individual
+type Registration struct {
+	ID              int64         `json:"id"`
+	Approved        int           `json:"approved"`
+	Status          string        `json:"status"`
+	ClubID          int64         `json:"club_id"`
+	AffiliationID   int64         `json:"affiliation_id"`
+	SeedPosition    *int          `json:"seed_position"`
+	AffiliationName string        `json:"affiliationName"`
+	Age             int           `json:"age"`
+	Birth           string        `json:"birth"`
+	BracketSeed     *int          `json:"bracket_seed"`
+	Categories      []RegCategory `json:"categories"`
+	ClubName        string        `json:"clubName"`
+	CountryCode     string        `json:"cn"`
+	Country         string        `json:"country"`
+	EventGroupID    int64         `json:"event_group_id"`
+	FirstName       string        `json:"firstname"`
+	Gender          string        `json:"gender"`
+	LastName        string        `json:"lastname"`
+	MiddleName      string        `json:"middle_name"`
+	ProfileImage    string        `json:"profile_image"`
+	ProfileImageID  int64         `json:"profile_image_id"`
+	PublicNote      string        `json:"public_note"`
+	ScoringAthlete  int           `json:"scoring_athlete"`
+	Status2         string        `json:"status2"`
+	TeamName        *string       `json:"teamName"`
+	Trashed         int           `json:"trashed"`
+	UserID          int64         `json:"user_id"`
+}
+
+// RegCategory representa una categoría del atleta (peso, edad, etc.)
+type RegCategory struct {
+	EventRegistrationID int64    `json:"event_registration_id"`
+	CategoryValueID     int64    `json:"category_value_id"`
+	EventCategoryID     int64    `json:"event_category_id"`
+	SortOrder           int      `json:"sort_order"`
+	EstimatedWeight     *float64 `json:"estimated_weight"`
+	WeightMeasured      *string  `json:"weight_measured"` // String porque puede venir como "60.90"
+}
+
+// FlexibleFloat permite parsear numeros o strings numericas (o null).
+type FlexibleFloat struct {
+	Value *float64
+}
+
+func (f *FlexibleFloat) UnmarshalJSON(data []byte) error {
+	if string(data) == "null" {
+		f.Value = nil
+		return nil
+	}
+
+	var number float64
+	if err := json.Unmarshal(data, &number); err == nil {
+		f.Value = &number
+		return nil
+	}
+
+	var str string
+	if err := json.Unmarshal(data, &str); err == nil {
+		if str == "" {
+			f.Value = nil
+			return nil
+		}
+		parsed, err := strconv.ParseFloat(str, 64)
+		if err != nil {
+			return fmt.Errorf("invalid float string: %q", str)
+		}
+		f.Value = &parsed
+		return nil
+	}
+
+	return fmt.Errorf("invalid float value: %s", string(data))
+}
+
+// Category representa las categorías del evento
+type Category struct {
+	EventCategoryID    int64    `json:"event_category_id"`
+	CategoryName       string   `json:"category_name"`
+	Datatype           string   `json:"datatype"`
+	DatatypeWeightUnit string   `json:"datatype_weight_unit"`
+	ID                 int64    `json:"id"`
+	Name               string   `json:"name"`
+	WeightMaximum      *FlexibleFloat `json:"weight_maximum"`
+	WeightMinimum      *FlexibleFloat `json:"weight_minimum"`
+}
+
 // AthleteEventData representa los datos de un atleta extraídos del evento
 type AthleteEventData struct {
 	SmoothCompID    string
 	FirstName       string
 	LastName        string
+	MiddleName      string
 	FullName        string
 	Country         string
 	CountryCode     string
@@ -36,154 +141,153 @@ type AthleteEventData struct {
 	ActualWeight    float64
 	Seed            int
 	Ranking         int
-	EventCardURL    string
+	Gender          string
 }
 
-// ScrapeEventAthletes extrae todos los atletas de un evento específico
-func (s *Scraper) ScrapeEventAthletes(eventID string, eventName string) error {
-	logger.Info("Iniciando scraping de atletas del evento",
+// ScrapeEventAthletes extrae todos los atletas de un evento usando la API de SmoothComp
+func (s *Scraper) ScrapeEventAthletes(eventID string, eventName string, eventURL string) error {
+	logger.Info("Iniciando scraping de atletas del evento via API",
 		zap.String("event_id", eventID),
-		zap.String("event_name", eventName))
+		zap.String("event_name", eventName),
+		zap.String("event_url", eventURL))
 
-	url := fmt.Sprintf("https://smoothcomp.com/en/event/%s/participants", eventID)
+	subdomain := "smoothcomp.com"
+	if eventURL != "" {
+		subdomain = ExtractSubdomainFromURL(eventURL)
+	} else {
+		subdomain = s.DetectEventSubdomain(eventID)
+	}
 
-	// Crear un nuevo collector
-	c := colly.NewCollector(
-		colly.AllowedDomains("smoothcomp.com", "www.smoothcomp.com"),
-		colly.UserAgent(s.config.Scraper.UserAgent),
-	)
+	apiURL := BuildAPIURL(subdomain, eventID)
 
-	// Configurar rate limiting
-	c.Limit(&colly.LimitRule{
-		DomainGlob:  "*smoothcomp.com*",
-		Delay:       time.Duration(s.config.Scraper.RequestDelayMs) * time.Millisecond,
-		RandomDelay: 1 * time.Second,
-	})
+	logger.Debug("API URL", zap.String("url", apiURL), zap.String("subdomain", subdomain))
 
+	// Crear cliente HTTP con timeout
+	client := &http.Client{
+		Timeout: 30 * time.Second,
+	}
+
+	// Crear request
+	req, err := http.NewRequest("POST", apiURL, nil)
+	if err != nil {
+		return fmt.Errorf("error creando request: %w", err)
+	}
+
+	// Headers importantes
+	req.Header.Set("User-Agent", s.config.Scraper.UserAgent)
+	req.Header.Set("Accept", "application/json, text/javascript, */*; q=0.01")
+	req.Header.Set("X-Requested-With", "XMLHttpRequest")
+	req.Header.Set("Content-Type", "application/json")
+
+	// Hacer el request
+	logger.Debug("Realizando request a API")
+	resp, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("error haciendo request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	// Verificar status code
+	if resp.StatusCode != http.StatusOK {
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("API retornó status %d: %s", resp.StatusCode, string(bodyBytes))
+	}
+
+	// Leer body
+	bodyBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return fmt.Errorf("error leyendo response: %w", err)
+	}
+
+	logger.Debug("Response recibido", zap.Int("bytes", len(bodyBytes)))
+
+	// Parsear JSON
+	var apiResponse SmoothCompAPIResponse
+	if err := json.Unmarshal(bodyBytes, &apiResponse); err != nil {
+		return fmt.Errorf("error parseando JSON: %w", err)
+	}
+
+	logger.Info("API response parseado",
+		zap.Int("categories", len(apiResponse.Participants)),
+		zap.Int("category_definitions", len(apiResponse.Categories)))
+
+	// Procesar todos los atletas
 	var athletes []AthleteEventData
-	var currentCategory string
+	totalRegistrations := 0
 
-	// Extraer el nombre de la categoría (heading)
-	c.OnHTML("div.participant-group", func(group *colly.HTMLElement) {
-		// Extraer la categoría del h2
-		categoryText := group.ChildText("h2.group-name")
-		currentCategory = categoryText
-		logger.Debug("Procesando categoría", zap.String("category", currentCategory))
+	for _, participant := range apiResponse.Participants {
+		// participant.Name contiene: "Men / Adults / Beginner / -60 kg"
+		division, ageCategory, rank, weightClass := parseCategory(participant.Name)
 
-		// Parsear la categoría
-		division, ageCategory, rank, weightClass := parseCategory(categoryText)
+		logger.Debug("Procesando categoría",
+			zap.String("category", participant.Name),
+			zap.Int("athletes", len(participant.Registrations)))
 
-		// Procesar cada atleta en esta categoría
-		group.ForEach("div.sc-card", func(_ int, card *colly.HTMLElement) {
+		for _, reg := range participant.Registrations {
+			totalRegistrations++
+
+			// Convertir Registration a AthleteEventData
 			athlete := AthleteEventData{
-				Division:    division,
-				AgeCategory: ageCategory,
-				Rank:        rank,
-				WeightClass: weightClass,
+				SmoothCompID:    strconv.FormatInt(reg.UserID, 10), // UserID es el ID único del atleta
+				FirstName:       reg.FirstName,
+				LastName:        reg.LastName,
+				MiddleName:      reg.MiddleName,
+				Country:         reg.Country,
+				CountryCode:     strings.ToUpper(reg.CountryCode),
+				Age:             reg.Age,
+				AcademyName:     reg.ClubName,
+				AffiliationName: reg.AffiliationName,
+				ImageURL:        reg.ProfileImage,
+				Division:        division,
+				AgeCategory:     ageCategory,
+				Rank:            rank,
+				WeightClass:     weightClass,
+				Gender:          reg.Gender,
 			}
 
-			// Extraer nombre y profile URL
-			profileLink := card.ChildAttr("a.truncate.block", "href")
-			athlete.FullName = strings.TrimSpace(card.ChildText("a.truncate.block span"))
-			athlete.ProfileURL = profileLink
+			// Construir nombre completo
+			nameParts := []string{reg.FirstName}
+			if reg.MiddleName != "" {
+				nameParts = append(nameParts, reg.MiddleName)
+			}
+			nameParts = append(nameParts, reg.LastName)
+			athlete.FullName = strings.Join(nameParts, " ")
 
-			// Separar nombre en FirstName y LastName
-			nameParts := strings.Fields(athlete.FullName)
-			if len(nameParts) > 0 {
-				athlete.FirstName = nameParts[0]
-				if len(nameParts) > 1 {
-					athlete.LastName = strings.Join(nameParts[1:], " ")
+			// Construir profile URL
+			athlete.ProfileURL = fmt.Sprintf("https://smoothcomp.com/en/profile/%d", reg.UserID)
+
+			// Parsear año de nacimiento
+			if reg.Birth != "" {
+				if year, err := strconv.Atoi(reg.Birth); err == nil {
+					athlete.BirthYear = year
 				}
 			}
 
-			// Extraer SmoothCompID del URL del perfil
-			profileRegex := regexp.MustCompile(`/profile/(\d+)`)
-			if matches := profileRegex.FindStringSubmatch(profileLink); len(matches) > 1 {
-				athlete.SmoothCompID = matches[1]
+			// Extraer seed position
+			if reg.SeedPosition != nil {
+				athlete.Seed = *reg.SeedPosition
 			}
 
-			// Extraer imagen
-			athlete.ImageURL = card.ChildAttr("div.profile-image-wrapper img", "src")
-
-			// Extraer país
-			countryClass := card.ChildAttr("span.flag-icon", "class")
-			countryRegex := regexp.MustCompile(`flag-icon-([a-z]{2})`)
-			if matches := countryRegex.FindStringSubmatch(countryClass); len(matches) > 1 {
-				athlete.CountryCode = strings.ToUpper(matches[1])
-				athlete.Country = config.GetCountryName(athlete.CountryCode)
-			}
-
-			// Extraer academia
-			athlete.AcademyName = strings.TrimSpace(card.ChildText("div.sc-card-body-club div.margin-top-xs-8 a"))
-
-			// Extraer afiliación (puede no existir)
-			athlete.AffiliationName = strings.TrimSpace(card.ChildText("div.sc-card-body-club div.margin-top-xs-2 a"))
-
-			// Extraer seed/ranking (solo si existe)
-			seedText := card.ChildText("div.sc-card-body-seed")
-			if seedText != "" {
-				athlete.Seed, athlete.Ranking = parseSeedRanking(seedText)
-			}
-
-			// Extraer datos de la tabla (en el footer)
-			card.ForEach("table.table tbody tr", func(_ int, row *colly.HTMLElement) {
-				header := strings.TrimSpace(row.ChildText("th"))
-				value := strings.TrimSpace(row.ChildText("td"))
-
-				switch {
-				case strings.Contains(header, "Birth"):
-					// Extraer año de nacimiento y edad
-					// Formato: "1999 (26 years)"
-					birthRegex := regexp.MustCompile(`(\d{4})\s*\((\d+)\s*years?\)`)
-					if matches := birthRegex.FindStringSubmatch(value); len(matches) > 2 {
-						if year, err := strconv.Atoi(matches[1]); err == nil {
-							athlete.BirthYear = year
-						}
-						if age, err := strconv.Atoi(matches[2]); err == nil {
-							athlete.Age = age
-						}
+			// Extraer peso medido de las categorías
+			for _, cat := range reg.Categories {
+				if cat.WeightMeasured != nil && *cat.WeightMeasured != "" {
+					if weight, err := strconv.ParseFloat(*cat.WeightMeasured, 64); err == nil {
+						athlete.ActualWeight = weight
+						break
 					}
-
-				case strings.Contains(header, "Weight"):
-					// El peso real está en el div con class "muted"
-					// Formato: "59.20 kg"
-					weightText := row.ChildText("div.muted")
-					weightRegex := regexp.MustCompile(`([\d.]+)\s*kg`)
-					if matches := weightRegex.FindStringSubmatch(weightText); len(matches) > 1 {
-						if weight, err := strconv.ParseFloat(matches[1], 64); err == nil {
-							athlete.ActualWeight = weight
-						}
-					}
-
-				case strings.Contains(header, "Download"):
-					// Extraer URL de la credencial del evento
-					athlete.EventCardURL = row.ChildAttr("td a", "href")
 				}
-			})
+			}
 
 			// Solo agregar si tenemos los datos mínimos requeridos
 			if athlete.SmoothCompID != "" && athlete.FullName != "" {
 				athletes = append(athletes, athlete)
 			}
-		})
-	})
-
-	// Error handler
-	c.OnError(func(r *colly.Response, err error) {
-		logger.Error("Error scrapeando evento", zap.String("url", r.Request.URL.String()), zap.Error(err))
-	})
-
-	// Log de requests
-	c.OnRequest(func(r *colly.Request) {
-		logger.Debug("Visitando URL", zap.String("url", r.URL.String()))
-	})
-
-	// Visitar la página
-	if err := c.Visit(url); err != nil {
-		return fmt.Errorf("error visitando URL: %w", err)
+		}
 	}
 
-	c.Wait()
+	logger.Info("Atletas extraídos de la API",
+		zap.Int("total_registrations", totalRegistrations),
+		zap.Int("valid_athletes", len(athletes)))
 
 	// Guardar atletas en la base de datos
 	logger.Info("Guardando atletas en la base de datos", zap.Int("total", len(athletes)))
@@ -212,29 +316,11 @@ func (s *Scraper) ScrapeEventAthletes(eventID string, eventName string) error {
 func parseCategory(category string) (division, ageCategory, rank, weightClass string) {
 	parts := strings.Split(category, "/")
 	if len(parts) >= 4 {
-		division = strings.TrimSpace(parts[0])    // Men, Women
-		ageCategory = strings.TrimSpace(parts[1]) // Adults, Masters, Juveniles
+		division = strings.TrimSpace(parts[0])    // Men, Women, Boys, Girls
+		ageCategory = strings.TrimSpace(parts[1]) // Adults, Masters, Age ranges
 		rank = strings.TrimSpace(parts[2])        // Beginner, Intermediate, Advanced
 		weightClass = strings.TrimSpace(parts[3]) // -60 kg, -65 kg, etc
 	}
-	return
-}
-
-// parseSeedRanking extrae el seed y ranking del texto
-// Ejemplo: "Seed # 1 (Ranked 96)"
-func parseSeedRanking(text string) (seed int, ranking int) {
-	// Extraer seed
-	seedRegex := regexp.MustCompile(`Seed\s*#\s*(\d+)`)
-	if matches := seedRegex.FindStringSubmatch(text); len(matches) > 1 {
-		seed, _ = strconv.Atoi(matches[1])
-	}
-
-	// Extraer ranking
-	rankingRegex := regexp.MustCompile(`Ranked\s+(\d+)`)
-	if matches := rankingRegex.FindStringSubmatch(text); len(matches) > 1 {
-		ranking, _ = strconv.Atoi(matches[1])
-	}
-
 	return
 }
 
@@ -272,6 +358,7 @@ func (s *Scraper) saveAthleteFromEvent(data AthleteEventData, eventID string, ev
 				AvatarURL:         data.ImageURL,
 				AffiliationName:   data.AffiliationName,
 				AcademyExternalID: academy.ExternalID,
+				Gender:            data.Gender,
 				ScrapedAt:         time.Now(),
 			}
 
@@ -304,6 +391,7 @@ func (s *Scraper) saveAthleteFromEvent(data AthleteEventData, eventID string, ev
 			athlete.ImageURL = data.ImageURL
 			athlete.AvatarURL = data.ImageURL
 			athlete.AffiliationName = data.AffiliationName
+			athlete.Gender = data.Gender
 			athlete.ScrapedAt = time.Now()
 
 			if err := tx.Save(&athlete).Error; err != nil {
@@ -325,7 +413,6 @@ func (s *Scraper) saveAthleteFromEvent(data AthleteEventData, eventID string, ev
 			ActualWeight:     data.ActualWeight,
 			Seed:             data.Seed,
 			Ranking:          data.Ranking,
-			EventCardURL:     data.EventCardURL,
 			RegistrationDate: time.Now(),
 		}
 
