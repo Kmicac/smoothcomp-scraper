@@ -11,26 +11,24 @@ import (
 
 var DB *gorm.DB
 
-// InitDatabase initializes the SQLite database connection
 func InitDatabase(dbPath string) error {
 	var err error
 
-	// Configure GORM
 	gormConfig := &gorm.Config{
 		Logger: logger.Default.LogMode(logger.Silent),
 	}
 
-	// Open SQLite connection
 	DB, err = gorm.Open(sqlite.Open(dbPath), gormConfig)
 	if err != nil {
 		return fmt.Errorf("failed to connect to database: %w", err)
 	}
 
-	// Auto-migrate models
 	err = DB.AutoMigrate(
 		&models.Academy{},
 		&models.Athlete{},
-		&models.EventRegistration{}, // ← AGREGAR ESTA LÍNEA
+		&models.Event{},
+		&models.EventDetail{},
+		&models.EventRegistration{},
 		&models.ScrapeJob{},
 		&models.ScheduleConfig{},
 	)
@@ -54,12 +52,10 @@ func InitDatabase(dbPath string) error {
 	return nil
 }
 
-// GetDB returns the database instance
 func GetDB() *gorm.DB {
 	return DB
 }
 
-// CloseDatabase closes the database connection
 func CloseDatabase() error {
 	sqlDB, err := DB.DB()
 	if err != nil {

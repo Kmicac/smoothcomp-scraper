@@ -27,12 +27,17 @@ func NewRouter(cfg *config.Config, scheduler *scheduler.Scheduler) *mux.Router {
 	api.HandleFunc("/scrape/event/athletes", handler.ScrapeEventAthletes).Methods("POST")
 	api.HandleFunc("/scrape/athlete/profile", handler.ScrapeAthleteProfile).Methods("POST")
 	api.HandleFunc("/scrape/athletes/enrich", handler.ScrapeAthleteProfiles).Methods("POST")
+	api.HandleFunc("/scrape/events/past", handler.ScrapePastEvents).Methods("POST")
+	api.HandleFunc("/scrape/events/upcoming", handler.ScrapeUpcomingEvents).Methods("POST")
 
 	// Data retrieval
 	api.HandleFunc("/academies", handler.GetAcademies).Methods("GET")
 	api.HandleFunc("/academies/{id}", handler.GetAcademyByID).Methods("GET")
 	api.HandleFunc("/athletes", handler.GetAthletes).Methods("GET")
 	api.HandleFunc("/athletes/{id}", handler.GetAthleteByID).Methods("GET")
+	api.HandleFunc("/events", handler.GetEvents).Methods("GET")
+	api.HandleFunc("/events/{id}", handler.GetEventByID).Methods("GET")
+	api.HandleFunc("/events/{id}/details", handler.GetEventDetails).Methods("GET")
 
 	// Schedule configuration
 	api.HandleFunc("/schedule/config", handler.GetScheduleConfig).Methods("GET")

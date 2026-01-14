@@ -79,6 +79,48 @@ type Athlete struct {
 	EventRegistrations []EventRegistration `json:"event_registrations,omitempty" gorm:"foreignKey:AthleteID"`
 }
 
+// Event represents a SmoothComp event card
+type Event struct {
+	ID          int    `json:"id" gorm:"primaryKey"`
+	ExternalID  string `json:"external_id" gorm:"index"`
+	Name        string `json:"name" gorm:"not null"`
+	EventURL    string `json:"event_url" gorm:"uniqueIndex;not null"`
+	ImageURL    string `json:"image_url"`
+	City        string `json:"city"`
+	Country     string `json:"country"`
+	CountryCode string `json:"country_code"`
+	DateText    string `json:"date_text"`
+	DaysText    string `json:"days_text"`
+	EventType   string `json:"event_type"`
+	Section     string `json:"section"`
+
+	ScrapedAt time.Time `json:"scraped_at"`
+	CreatedAt time.Time `json:"created_at" gorm:"autoCreateTime"`
+	UpdatedAt time.Time `json:"updated_at" gorm:"autoUpdateTime"`
+}
+
+// EventDetail stores extended data scraped from an event page
+type EventDetail struct {
+	ID                 int       `json:"id" gorm:"primaryKey"`
+	EventID            string    `json:"event_id" gorm:"uniqueIndex;not null"`
+	EventURL           string    `json:"event_url"`
+	Name               string    `json:"name"`
+	Description        string    `json:"description" gorm:"type:text"`
+	StartDate          string    `json:"start_date"`
+	EndDate            string    `json:"end_date"`
+	ImageURL           string    `json:"image_url"`
+	LocationName       string    `json:"location_name"`
+	LocationCity       string    `json:"location_city"`
+	LocationCountry    string    `json:"location_country"`
+	LocationAddress    string    `json:"location_address"`
+	OrganizerName      string    `json:"organizer_name"`
+	InfoPanelsJSON     string    `json:"info_panels_json" gorm:"type:text"`
+	InfoPageBlocksJSON string    `json:"info_page_blocks_json" gorm:"type:text"`
+	ScrapedAt          time.Time `json:"scraped_at"`
+	CreatedAt          time.Time `json:"created_at" gorm:"autoCreateTime"`
+	UpdatedAt          time.Time `json:"updated_at" gorm:"autoUpdateTime"`
+}
+
 // ScrapeJob represents a scraping job execution
 type ScrapeJob struct {
 	ID           int        `json:"id" gorm:"primaryKey"`

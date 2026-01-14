@@ -54,7 +54,6 @@ func LoadConfig() (*Config, error) {
 		fmt.Printf("Warning: .env file not found, using environment variables: %v\n", err)
 	}
 
-	// Set defaults
 	viper.SetDefault("PORT", "8080")
 	viper.SetDefault("ENVIRONMENT", "development")
 	viper.SetDefault("SMOOTHCOMP_BASE_URL", "https://smoothcomp.com")

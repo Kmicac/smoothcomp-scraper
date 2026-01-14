@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -119,6 +120,56 @@ func (h *Handler) ScrapeAll(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// ScrapePastEvents triggers scraping of past events for a country
+func (h *Handler) ScrapePastEvents(w http.ResponseWriter, r *http.Request) {
+	country := strings.TrimSpace(r.URL.Query().Get("country"))
+	if country == "" {
+		country = "AR"
+	}
+
+	logger.Info("Manual past events scraping triggered",
+		zap.String("country", country))
+
+	go func() {
+		if err := h.scraper.ScrapeEvents("past", country); err != nil {
+			logger.Error("Failed to scrape past events", zap.Error(err))
+		}
+	}()
+
+	respondJSON(w, http.StatusAccepted, models.APIResponse{
+		Success: true,
+		Message: "Past events scraping started",
+		Data: map[string]string{
+			"country": country,
+		},
+	})
+}
+
+// ScrapeUpcomingEvents triggers scraping of upcoming events for a country
+func (h *Handler) ScrapeUpcomingEvents(w http.ResponseWriter, r *http.Request) {
+	country := strings.TrimSpace(r.URL.Query().Get("country"))
+	if country == "" {
+		country = "AR"
+	}
+
+	logger.Info("Manual upcoming events scraping triggered",
+		zap.String("country", country))
+
+	go func() {
+		if err := h.scraper.ScrapeEvents("upcoming", country); err != nil {
+			logger.Error("Failed to scrape upcoming events", zap.Error(err))
+		}
+	}()
+
+	respondJSON(w, http.StatusAccepted, models.APIResponse{
+		Success: true,
+		Message: "Upcoming events scraping started",
+		Data: map[string]string{
+			"country": country,
+		},
+	})
+}
+
 // GetAcademies returns all academies with pagination
 func (h *Handler) GetAcademies(w http.ResponseWriter, r *http.Request) {
 	db := config.GetDB()
@@ -229,6 +280,74 @@ func (h *Handler) GetAthletes(w http.ResponseWriter, r *http.Request) {
 			"limit":    limit,
 			"total":    total,
 		},
+	})
+}
+
+// GetEvents returns all events with pagination
+func (h *Handler) GetEvents(w http.ResponseWriter, r *http.Request) {
+	db := config.GetDB()
+
+	page, _ := strconv.Atoi(r.URL.Query().Get("page"))
+	if page < 1 {
+		page = 1
+	}
+
+	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
+	if limit < 1 || limit > 100 {
+		limit = 20
+	}
+
+	eventType := strings.TrimSpace(r.URL.Query().Get("type"))
+	country := strings.TrimSpace(r.URL.Query().Get("country"))
+
+	offset := (page - 1) * limit
+
+	query := db.Model(&models.Event{})
+	if eventType != "" {
+		query = query.Where("event_type = ?", eventType)
+	}
+	if country != "" {
+		query = query.Where("country_code = ? OR country = ?", strings.ToUpper(country), country)
+	}
+
+	var total int64
+	query.Count(&total)
+
+	var events []models.Event
+	query.Offset(offset).Limit(limit).Order("scraped_at DESC").Find(&events)
+
+	respondJSON(w, http.StatusOK, models.APIResponse{
+		Success: true,
+		Message: "Events retrieved successfully",
+		Data: map[string]interface{}{
+			"events": events,
+			"page":   page,
+			"limit":  limit,
+			"total":  total,
+		},
+	})
+}
+
+// GetEventByID returns a specific event
+func (h *Handler) GetEventByID(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	id := vars["id"]
+
+	db := config.GetDB()
+	var event models.Event
+
+	if err := db.Where("external_id = ?", id).First(&event).Error; err != nil {
+		respondJSON(w, http.StatusNotFound, models.APIResponse{
+			Success: false,
+			Error:   "Event not found",
+		})
+		return
+	}
+
+	respondJSON(w, http.StatusOK, models.APIResponse{
+		Success: true,
+		Message: "Event retrieved successfully",
+		Data:    event,
 	})
 }
 
@@ -502,6 +621,47 @@ func (h *Handler) ScrapeAthleteProfiles(w http.ResponseWriter, r *http.Request) 
 			"offset":       offset,
 			"only_missing": onlyMissing,
 		},
+	})
+}
+
+// GetEventDetails returns detailed event information from SmoothComp
+func (h *Handler) GetEventDetails(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	eventID := vars["id"]
+	if eventID == "" {
+		eventID = r.URL.Query().Get("event_id")
+	}
+	eventURL := r.URL.Query().Get("event_url")
+
+	if eventID == "" && eventURL == "" {
+		respondJSON(w, http.StatusBadRequest, models.APIResponse{
+			Success: false,
+			Error:   "event_id or event_url is required",
+		})
+		return
+	}
+
+	details, err := h.scraper.FetchEventDetails(eventID, eventURL)
+	if err != nil {
+		respondJSON(w, http.StatusInternalServerError, models.APIResponse{
+			Success: false,
+			Error:   err.Error(),
+		})
+		return
+	}
+
+	if err := h.scraper.SaveEventDetails(details); err != nil {
+		respondJSON(w, http.StatusInternalServerError, models.APIResponse{
+			Success: false,
+			Error:   err.Error(),
+		})
+		return
+	}
+
+	respondJSON(w, http.StatusOK, models.APIResponse{
+		Success: true,
+		Message: "Event details retrieved successfully",
+		Data:    details,
 	})
 }
 
