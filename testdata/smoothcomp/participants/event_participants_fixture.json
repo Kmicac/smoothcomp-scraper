@@ -1,0 +1,51 @@
+{
+  "participants": [
+    {
+      "name": "Men / Adults / Beginner / -70 kg",
+      "registrations": [
+        {
+          "id": 1,
+          "club_id": 99,
+          "affiliation_id": 0,
+          "seed_position": 2,
+          "affiliationName": "Alpha HQ",
+          "age": 28,
+          "birth": "1998",
+          "clubName": "Alpha Team",
+          "cn": "AR",
+          "country": "Argentina",
+          "firstname": "Juan",
+          "gender": "male",
+          "lastname": "Perez",
+          "middle_name": "",
+          "profile_image": "https://img/juan.jpg",
+          "categories": [
+            { "weight_measured": "69.50" }
+          ],
+          "user_id": 5001
+        },
+        {
+          "id": 2,
+          "club_id": 99,
+          "affiliation_id": 0,
+          "seed_position": null,
+          "affiliationName": "Alpha HQ",
+          "age": 31,
+          "birth": "1995",
+          "clubName": "Alpha Team",
+          "cn": "AR",
+          "country": "Argentina",
+          "firstname": "Martin",
+          "gender": "male",
+          "lastname": "Lopez",
+          "middle_name": "",
+          "profile_image": "https://img/martin.jpg",
+          "categories": [
+            { "weight_measured": "68.20" }
+          ],
+          "user_id": 5002
+        }
+      ]
+    }
+  ]
+}
