@@ -12,7 +12,6 @@ import (
 	platformconfig "github.com/kmicac/smoothcomp-scraper/internal/platform/config"
 )
 
-// cmd/server remains as a local-dev compatibility binary that runs API and worker in one process.
 func main() {
 	cfg, err := platformconfig.Load()
 	if err != nil {
@@ -35,19 +34,7 @@ func main() {
 		IdleTimeout:  cfg.HTTP.IdleTimeout,
 	}
 
-	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
-	defer cancel()
-
-	if err := runtime.Scheduler.Start(); err != nil {
-		runtime.Logger.Fatal("scheduler failed to start", runtime.ErrField(err))
-	}
-	defer runtime.Scheduler.Stop()
-
-	go func() {
-		if err := runtime.Worker.Run(ctx); err != nil {
-			runtime.Logger.Fatal("worker failed", runtime.ErrField(err))
-		}
-	}()
+	runtime.Logger.Info("starting internal API", runtime.LogField("address", server.Addr))
 
 	go func() {
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
@@ -55,12 +42,14 @@ func main() {
 		}
 	}()
 
-	<-ctx.Done()
+	stop := make(chan os.Signal, 1)
+	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
+	<-stop
 
-	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), cfg.HTTP.ShutdownTimeout)
-	defer shutdownCancel()
+	ctx, cancel := context.WithTimeout(context.Background(), cfg.HTTP.ShutdownTimeout)
+	defer cancel()
 
-	if err := server.Shutdown(shutdownCtx); err != nil {
+	if err := server.Shutdown(ctx); err != nil {
 		runtime.Logger.Error("http shutdown failed", runtime.ErrField(err))
 	}
 }

@@ -1,0 +1,10 @@
+-- Initial ingestion-adapter schema.
+-- The live code currently uses isolated repository-backed AutoMigrate for local sqlite development.
+-- Production rollout should promote this file into dialect-specific migrations and add postgres DDL.
+--
+-- Tables introduced by the new adapter architecture:
+--   ingestion_jobs
+--   raw_snapshots
+--   normalized_results
+--   published_results
+--   schedule_configs_v2
