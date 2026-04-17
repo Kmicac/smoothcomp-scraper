@@ -47,8 +47,12 @@ type SecurityConfig struct {
 }
 
 type StorageConfig struct {
-	Driver string
-	DSN    string
+	Driver          string
+	DSN             string
+	RunMigrations   bool
+	MaxOpenConns    int
+	MaxIdleConns    int
+	ConnMaxLifetime time.Duration
 }
 
 type SmoothcompConfig struct {
@@ -61,7 +65,12 @@ type SmoothcompConfig struct {
 }
 
 type WorkerConfig struct {
-	PollInterval time.Duration
+	PollInterval      time.Duration
+	LeaseDuration     time.Duration
+	HeartbeatInterval time.Duration
+	MaxAttempts       int
+	BaseRetryDelay    time.Duration
+	MaxRetryDelay     time.Duration
 }
 
 type SchedulerConfig struct {
@@ -95,6 +104,10 @@ func Load() (*Config, error) {
 	v.SetDefault("ALLOW_INSECURE_INTERNAL_AUTH", false)
 	v.SetDefault("DATABASE_DRIVER", "sqlite")
 	v.SetDefault("DATABASE_DSN", "./storage/adapter.db")
+	v.SetDefault("DATABASE_RUN_MIGRATIONS", true)
+	v.SetDefault("DATABASE_MAX_OPEN_CONNS", 10)
+	v.SetDefault("DATABASE_MAX_IDLE_CONNS", 5)
+	v.SetDefault("DATABASE_CONN_MAX_LIFETIME_SEC", 300)
 	v.SetDefault("SMOOTHCOMP_BASE_URL", "https://smoothcomp.com")
 	v.SetDefault("SMOOTHCOMP_USER_AGENT", "smoothcomp-ingestion-adapter/1.0 (+internal)")
 	v.SetDefault("SMOOTHCOMP_TIMEOUT_SEC", 20)
@@ -102,6 +115,11 @@ func Load() (*Config, error) {
 	v.SetDefault("SMOOTHCOMP_TARGET_COUNTRIES", "AR")
 	v.SetDefault("SMOOTHCOMP_EVENT_TYPES", "upcoming,past")
 	v.SetDefault("WORKER_POLL_INTERVAL_SEC", 5)
+	v.SetDefault("WORKER_LEASE_DURATION_SEC", 60)
+	v.SetDefault("WORKER_HEARTBEAT_INTERVAL_SEC", 20)
+	v.SetDefault("WORKER_MAX_ATTEMPTS", 5)
+	v.SetDefault("WORKER_BASE_RETRY_DELAY_SEC", 15)
+	v.SetDefault("WORKER_MAX_RETRY_DELAY_SEC", 300)
 	v.SetDefault("SCHEDULER_ENABLED", false)
 	v.SetDefault("SCHEDULER_CRON", "0 2 * * *")
 	v.SetDefault("SCHEDULER_NAME", "smoothcomp-default-catalog")
@@ -127,8 +145,12 @@ func Load() (*Config, error) {
 			InternalAuthHeader: strings.TrimSpace(v.GetString("INTERNAL_AUTH_HEADER")),
 		},
 		Storage: StorageConfig{
-			Driver: strings.ToLower(strings.TrimSpace(v.GetString("DATABASE_DRIVER"))),
-			DSN:    strings.TrimSpace(v.GetString("DATABASE_DSN")),
+			Driver:          strings.ToLower(strings.TrimSpace(v.GetString("DATABASE_DRIVER"))),
+			DSN:             strings.TrimSpace(v.GetString("DATABASE_DSN")),
+			RunMigrations:   v.GetBool("DATABASE_RUN_MIGRATIONS"),
+			MaxOpenConns:    v.GetInt("DATABASE_MAX_OPEN_CONNS"),
+			MaxIdleConns:    v.GetInt("DATABASE_MAX_IDLE_CONNS"),
+			ConnMaxLifetime: time.Duration(v.GetInt("DATABASE_CONN_MAX_LIFETIME_SEC")) * time.Second,
 		},
 		Smoothcomp: SmoothcompConfig{
 			BaseURL:         strings.TrimRight(strings.TrimSpace(v.GetString("SMOOTHCOMP_BASE_URL")), "/"),
@@ -139,7 +161,12 @@ func Load() (*Config, error) {
 			EventTypes:      normalizeCSV(v.GetString("SMOOTHCOMP_EVENT_TYPES"), false),
 		},
 		Worker: WorkerConfig{
-			PollInterval: time.Duration(v.GetInt("WORKER_POLL_INTERVAL_SEC")) * time.Second,
+			PollInterval:      time.Duration(v.GetInt("WORKER_POLL_INTERVAL_SEC")) * time.Second,
+			LeaseDuration:     time.Duration(v.GetInt("WORKER_LEASE_DURATION_SEC")) * time.Second,
+			HeartbeatInterval: time.Duration(v.GetInt("WORKER_HEARTBEAT_INTERVAL_SEC")) * time.Second,
+			MaxAttempts:       v.GetInt("WORKER_MAX_ATTEMPTS"),
+			BaseRetryDelay:    time.Duration(v.GetInt("WORKER_BASE_RETRY_DELAY_SEC")) * time.Second,
+			MaxRetryDelay:     time.Duration(v.GetInt("WORKER_MAX_RETRY_DELAY_SEC")) * time.Second,
 		},
 		Scheduler: SchedulerConfig{
 			Enabled:        v.GetBool("SCHEDULER_ENABLED"),
@@ -178,6 +205,12 @@ func (c *Config) Validate() error {
 	if c.Storage.DSN == "" {
 		return fmt.Errorf("database dsn is required")
 	}
+	if c.Storage.MaxOpenConns <= 0 {
+		return fmt.Errorf("database max open conns must be greater than zero")
+	}
+	if c.Storage.MaxIdleConns < 0 {
+		return fmt.Errorf("database max idle conns must be zero or greater")
+	}
 	if c.Smoothcomp.BaseURL == "" {
 		return fmt.Errorf("smoothcomp base url is required")
 	}
@@ -199,6 +232,21 @@ func (c *Config) Validate() error {
 		if _, err := cron.ParseStandard(c.Scheduler.CronExpression); err != nil {
 			return fmt.Errorf("invalid scheduler cron: %w", err)
 		}
+	}
+	if c.Worker.LeaseDuration <= 0 {
+		return fmt.Errorf("worker lease duration must be greater than zero")
+	}
+	if c.Worker.HeartbeatInterval <= 0 || c.Worker.HeartbeatInterval >= c.Worker.LeaseDuration {
+		return fmt.Errorf("worker heartbeat interval must be greater than zero and lower than lease duration")
+	}
+	if c.Worker.MaxAttempts <= 0 {
+		return fmt.Errorf("worker max attempts must be greater than zero")
+	}
+	if c.Worker.BaseRetryDelay <= 0 {
+		return fmt.Errorf("worker base retry delay must be greater than zero")
+	}
+	if c.Worker.MaxRetryDelay < c.Worker.BaseRetryDelay {
+		return fmt.Errorf("worker max retry delay must be greater than or equal to base retry delay")
 	}
 	return nil
 }

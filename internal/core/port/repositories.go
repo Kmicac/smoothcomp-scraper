@@ -13,8 +13,10 @@ type JobListFilter struct {
 
 type JobRepository interface {
 	Create(context.Context, *job.Job) error
-	ClaimNextPending(context.Context, string) (*job.Job, error)
-	Update(context.Context, *job.Job) error
+	ClaimNextAvailable(context.Context, job.ClaimOptions) (*job.Job, error)
+	Heartbeat(context.Context, job.LeaseHeartbeat) error
+	Complete(context.Context, job.Completion) (*job.Job, error)
+	Fail(context.Context, job.FailureTransition) (*job.Job, error)
 	Get(context.Context, string) (*job.Job, error)
 	List(context.Context, JobListFilter) ([]job.Job, error)
 }

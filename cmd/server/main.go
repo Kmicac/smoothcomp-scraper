@@ -38,6 +38,8 @@ func main() {
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer cancel()
 
+	runtime.Logger.Warn("cmd/server is a local convenience binary; use cmd/api and cmd/worker as the supported runtime topology")
+
 	if err := runtime.Scheduler.Start(); err != nil {
 		runtime.Logger.Fatal("scheduler failed to start", runtime.ErrField(err))
 	}
