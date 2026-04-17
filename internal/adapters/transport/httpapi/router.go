@@ -72,13 +72,15 @@ func (h *Handler) ready(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) createJob(w http.ResponseWriter, r *http.Request) {
 	var request struct {
-		Pipeline  string            `json:"pipeline"`
-		Country   string            `json:"country,omitempty"`
-		EventType string            `json:"event_type,omitempty"`
-		EventID   string            `json:"event_id,omitempty"`
-		EventURL  string            `json:"event_url,omitempty"`
-		EventName string            `json:"event_name,omitempty"`
-		Metadata  map[string]string `json:"metadata,omitempty"`
+		Pipeline   string            `json:"pipeline"`
+		Country    string            `json:"country,omitempty"`
+		EventType  string            `json:"event_type,omitempty"`
+		EventID    string            `json:"event_id,omitempty"`
+		EventURL   string            `json:"event_url,omitempty"`
+		EventName  string            `json:"event_name,omitempty"`
+		ProfileID  string            `json:"profile_id,omitempty"`
+		ProfileURL string            `json:"profile_url,omitempty"`
+		Metadata   map[string]string `json:"metadata,omitempty"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
 		writeError(w, http.StatusBadRequest, coreerrors.New(coreerrors.CategoryValidation, coreerrors.CodeInvalidRequest, "http.create_job", false, "invalid JSON body", err))
@@ -94,6 +96,8 @@ func (h *Handler) createJob(w http.ResponseWriter, r *http.Request) {
 		EventID:       request.EventID,
 		EventURL:      request.EventURL,
 		EventName:     request.EventName,
+		ProfileID:     request.ProfileID,
+		ProfileURL:    request.ProfileURL,
 		Metadata:      request.Metadata,
 	})
 	if err != nil {

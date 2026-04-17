@@ -41,10 +41,13 @@ func NewRuntime(cfg *platformconfig.Config) (*Runtime, error) {
 	registry := ingestion.NewRegistry(
 		smoothcomp.NewEventCatalogPipeline(client),
 		smoothcomp.NewEventParticipantsPipeline(client),
+		smoothcomp.NewEventDetailPipeline(client),
+		smoothcomp.NewAthleteProfilePipeline(client),
+		smoothcomp.NewAcademyCatalogPipeline(client),
 	)
 
-	commands := ingestion.NewCommandService(repos, registry, logger)
-	worker := ingestion.NewWorker(repos, repos, repos, registry, logger, cfg.Worker.PollInterval)
+	commands := ingestion.NewCommandService(repos, registry, logger, cfg.Worker.MaxAttempts)
+	worker := ingestion.NewWorker(repos, repos, repos, registry, logger, cfg.Worker)
 	ops := operations.NewService(repos, repos, repos)
 	scheduler := appscheduler.NewService(cfg.Scheduler, cfg.Smoothcomp, commands, repos, logger)
 	router := httpapi.NewRouter(cfg, logger, ops, commands)

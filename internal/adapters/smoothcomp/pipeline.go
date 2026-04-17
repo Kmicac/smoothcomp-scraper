@@ -14,6 +14,9 @@ import (
 const (
 	parserVersionEventCatalog      = "smoothcomp.event_catalog.html.v1"
 	parserVersionEventParticipants = "smoothcomp.event_participants.json.v1"
+	parserVersionEventDetail       = "smoothcomp.event_detail.v1"
+	parserVersionAthleteProfile    = "smoothcomp.athlete_profile.v1"
+	parserVersionAcademyCatalog    = "smoothcomp.academy_catalog.v1"
 	normalizationVersion           = "technical-normalization.v1"
 )
 

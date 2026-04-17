@@ -17,6 +17,7 @@ const (
 	StateRunning   State = "running"
 	StateSucceeded State = "succeeded"
 	StateFailed    State = "failed"
+	StateExhausted State = "exhausted"
 
 	TriggerManual    Trigger = "manual"
 	TriggerScheduled Trigger = "scheduled"
@@ -24,6 +25,9 @@ const (
 
 	PipelineSmoothcompEventCatalog      Pipeline = "smoothcomp.event_catalog"
 	PipelineSmoothcompEventParticipants Pipeline = "smoothcomp.event_participants"
+	PipelineSmoothcompEventDetail       Pipeline = "smoothcomp.event_detail"
+	PipelineSmoothcompAthleteProfile    Pipeline = "smoothcomp.athlete_profile_enrichment"
+	PipelineSmoothcompAcademyCatalog    Pipeline = "smoothcomp.academy_catalog"
 )
 
 type Request struct {
@@ -35,6 +39,8 @@ type Request struct {
 	EventID       string            `json:"event_id,omitempty"`
 	EventURL      string            `json:"event_url,omitempty"`
 	EventName     string            `json:"event_name,omitempty"`
+	ProfileID     string            `json:"profile_id,omitempty"`
+	ProfileURL    string            `json:"profile_url,omitempty"`
 	Metadata      map[string]string `json:"metadata,omitempty"`
 }
 
@@ -44,6 +50,7 @@ type Stats struct {
 	OrganizationCount int `json:"organization_count"`
 	PersonCount       int `json:"person_count"`
 	RegistrationCount int `json:"registration_count"`
+	MatchCount        int `json:"match_count"`
 }
 
 type Failure struct {
@@ -65,15 +72,24 @@ type Job struct {
 	Request              Request    `json:"request"`
 	Stats                Stats      `json:"stats"`
 	Error                *Failure   `json:"error,omitempty"`
-	WorkerID             string     `json:"worker_id,omitempty"`
+	AttemptCount         int        `json:"attempt_count"`
+	MaxAttempts          int        `json:"max_attempts"`
+	ClaimedBy            string     `json:"claimed_by,omitempty"`
+	ClaimedAt            *time.Time `json:"claimed_at,omitempty"`
+	LeaseUntil           *time.Time `json:"lease_until,omitempty"`
+	LastHeartbeatAt      *time.Time `json:"last_heartbeat_at,omitempty"`
+	NextRetryAt          *time.Time `json:"next_retry_at,omitempty"`
+	LastTransitionAt     time.Time  `json:"last_transition_at"`
 	CreatedAt            time.Time  `json:"created_at"`
 	StartedAt            *time.Time `json:"started_at,omitempty"`
 	FinishedAt           *time.Time `json:"finished_at,omitempty"`
+	UpdatedAt            time.Time  `json:"updated_at"`
 }
 
 type RawSnapshot struct {
 	ID            string            `json:"id"`
 	JobID         string            `json:"job_id"`
+	AttemptNumber int               `json:"attempt_number"`
 	Provider      string            `json:"provider"`
 	Pipeline      Pipeline          `json:"pipeline"`
 	ResourceType  string            `json:"resource_type"`
@@ -91,10 +107,12 @@ type RawSnapshot struct {
 type NormalizedResult struct {
 	ID                   string            `json:"id"`
 	JobID                string            `json:"job_id"`
+	AttemptNumber        int               `json:"attempt_number"`
 	Provider             string            `json:"provider"`
 	Pipeline             Pipeline          `json:"pipeline"`
 	ParserVersion        string            `json:"parser_version"`
 	NormalizationVersion string            `json:"normalization_version"`
+	PayloadHash          string            `json:"payload_hash"`
 	CreatedAt            time.Time         `json:"created_at"`
 	Metadata             map[string]string `json:"metadata,omitempty"`
 	Payload              contract.Envelope `json:"payload"`
@@ -103,6 +121,7 @@ type NormalizedResult struct {
 type PublishedResult struct {
 	ID              string            `json:"id"`
 	JobID           string            `json:"job_id"`
+	AttemptNumber   int               `json:"attempt_number"`
 	Provider        string            `json:"provider"`
 	Pipeline        Pipeline          `json:"pipeline"`
 	ContractVersion string            `json:"contract_version"`
@@ -117,6 +136,55 @@ type Schedule struct {
 	CronExpression string    `json:"cron_expression"`
 	Enabled        bool      `json:"enabled"`
 	UpdatedAt      time.Time `json:"updated_at"`
+}
+
+type Attempt struct {
+	ID              string     `json:"id"`
+	JobID           string     `json:"job_id"`
+	AttemptNumber   int        `json:"attempt_number"`
+	WorkerID        string     `json:"worker_id"`
+	State           State      `json:"state"`
+	Error           *Failure   `json:"error,omitempty"`
+	StartedAt       time.Time  `json:"started_at"`
+	FinishedAt      *time.Time `json:"finished_at,omitempty"`
+	LastHeartbeatAt *time.Time `json:"last_heartbeat_at,omitempty"`
+	LeaseUntil      *time.Time `json:"lease_until,omitempty"`
+	CreatedAt       time.Time  `json:"created_at"`
+}
+
+type ClaimOptions struct {
+	WorkerID      string
+	LeaseDuration time.Duration
+}
+
+type LeaseHeartbeat struct {
+	JobID         string
+	AttemptNumber int
+	WorkerID      string
+	LeaseDuration time.Duration
+	HeartbeatAt   time.Time
+}
+
+type Completion struct {
+	JobID         string
+	AttemptNumber int
+	WorkerID      string
+	Stats         Stats
+	FinishedAt    time.Time
+}
+
+type FailureTransition struct {
+	JobID         string
+	AttemptNumber int
+	WorkerID      string
+	Failure       Failure
+	RetryAt       *time.Time
+	FinishedAt    time.Time
+	Terminal      bool
+}
+
+func (j Job) IsTerminal() bool {
+	return j.State == StateSucceeded || j.State == StateFailed || j.State == StateExhausted
 }
 
 func NewID(prefix string) string {
