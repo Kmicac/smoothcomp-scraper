@@ -1,0 +1,12 @@
+{
+  "infoPageBlocks": [
+    {
+      "title": "Prizes",
+      "type": "rich_text"
+    },
+    {
+      "title": "Schedule",
+      "type": "schedule"
+    }
+  ]
+}

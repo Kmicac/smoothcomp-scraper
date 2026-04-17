@@ -1,0 +1,34 @@
+{
+  "data": [
+    {
+      "event_id": 25258,
+      "event_name": "South American Open 2026",
+      "event_url": "https://smoothcomp.com/en/event/25258",
+      "start_date": "2026-06-14",
+      "event_status": "completed",
+      "is_upcoming": false,
+      "registrations": [
+        {
+          "matches": [
+            {"is_winner": true, "outcome": "Submission"},
+            {"is_winner": false, "outcome": "Points"}
+          ]
+        }
+      ]
+    },
+    {
+      "event_id": 30001,
+      "event_name": "Rio Grand Prix 2026",
+      "event_url": "https://smoothcomp.com/en/event/30001",
+      "start_date": "2026-09-10",
+      "event_status": "",
+      "is_upcoming": true,
+      "registrations": [
+        {
+          "matches": []
+        }
+      ]
+    }
+  ],
+  "next_page_url": null
+}

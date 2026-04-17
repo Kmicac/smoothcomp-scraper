@@ -1,0 +1,77 @@
+{
+  "data": [
+    {
+      "event_id": 7101,
+      "event_name": "Pan Am Trials",
+      "event_url": "https://smoothcomp.com/en/event/7101",
+      "start_date": "2026-03-10",
+      "event_status": "completed",
+      "is_upcoming": false,
+      "registrations": [
+        {
+          "id": 501,
+          "division": "Men",
+          "age_category": "Adults",
+          "rank": "Brown",
+          "weight_class": "-82 kg",
+          "bracket_name": "Men / Adults / Brown / -82 kg",
+          "matches": [
+            {
+              "match_id": 9001,
+              "is_winner": true,
+              "outcome": "Win by submission",
+              "score": "2-0",
+              "result_method": "submission",
+              "round_name": "Quarterfinal",
+              "opponent_user_id": 9901,
+              "opponent_name": "Leo Kim",
+              "opponent_country": "United States"
+            },
+            {
+              "match_id": 9002,
+              "is_winner": false,
+              "outcome": "Loss by points",
+              "score": "0-2",
+              "result_method": "points",
+              "round_name": "Semifinal",
+              "opponent_user_id": 9902,
+              "opponent_first_name": "Bruno",
+              "opponent_last_name": "Lima",
+              "opponent_country": "Brazil"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "event_id": 7102,
+      "event_name": "National Finals",
+      "event_url": "https://smoothcomp.com/en/event/7102",
+      "start_date": "2026-04-04",
+      "event_status": "completed",
+      "is_upcoming": false,
+      "registrations": [
+        {
+          "id": 502,
+          "division": "Men",
+          "age_category": "Adults",
+          "rank": "Brown",
+          "weight_class": "Open",
+          "bracket_name": "Men / Adults / Brown / Open",
+          "matches": [
+            {
+              "match_id": 9003,
+              "is_winner": true,
+              "outcome": "Win",
+              "score": "4-2",
+              "round_name": "Final",
+              "opponent_name": "Mika Sato",
+              "opponent_country": "Japan"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "next_page_url": null
+}

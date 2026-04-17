@@ -1,0 +1,11 @@
+{
+  "location_name": "Polideportivo Central",
+  "location_city": "Buenos Aires",
+  "location_country_human": "Argentina",
+  "location_address": "Av. Example 123",
+  "organizer": {
+    "name": "Smooth Events Latam"
+  },
+  "registration_open": true,
+  "mat_count": 8
+}

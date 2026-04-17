@@ -1,0 +1,39 @@
+{
+  "data": [
+    {
+      "event_id": 7201,
+      "event_name": "Nordic Open RR",
+      "event_url": "https://smoothcomp.com/en/event/7201",
+      "start_date": "2026-02-18",
+      "event_status": "completed",
+      "is_upcoming": false,
+      "registrations": [
+        {
+          "id": 601,
+          "division": "Women",
+          "age_category": "Adults",
+          "rank": "Purple",
+          "weight_class": "-64 kg",
+          "bracket_name": "Women / Adults / Purple / -64 kg",
+          "matches": [
+            {
+              "match_id": 9201,
+              "is_winner": true,
+              "outcome": "Walkover",
+              "result_method": "walkover",
+              "round_name": "Round robin"
+            },
+            {
+              "match_id": 9202,
+              "is_winner": false,
+              "outcome": "Loss by decision",
+              "result_method": "decision",
+              "round_name": "Round robin"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "next_page_url": null
+}

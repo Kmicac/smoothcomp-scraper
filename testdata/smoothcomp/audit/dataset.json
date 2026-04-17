@@ -1,0 +1,936 @@
+{
+  "name": "smoothcomp.extraction.audit.v1",
+  "cases": [
+    {
+      "id": "event_catalog_script_past_ar",
+      "pipeline": "smoothcomp.event_catalog",
+      "description": "Embedded past events payload with stable IDs and ISO dates.",
+      "request": { "pipeline": "smoothcomp.event_catalog", "country": "AR", "event_type": "past" },
+      "snapshots": [
+        { "id": "snap_ec_1", "resource_type": "event_catalog_html", "status_code": 200, "file": "../events/past_events_fixture.html" }
+      ],
+      "expectations": {
+        "scope": {
+          "country": { "match": "exact", "value": "AR" },
+          "event_type": { "match": "exact", "value": "past" }
+        },
+        "events": {
+          "12345": {
+            "source_id": { "match": "exact", "value": "12345" },
+            "source_url": { "match": "exact", "value": "https://smoothcomp.com/en/event/12345" },
+            "name": { "match": "exact", "value": "Buenos Aires Open" },
+            "city": { "match": "exact", "value": "Buenos Aires" },
+            "country": { "match": "exact", "value": "Argentina" },
+            "country_code": { "match": "exact", "value": "AR" },
+            "status": { "match": "exact", "value": "completed" },
+            "starts_at": { "match": "exact", "value": "2026-04-10" }
+          },
+          "67890": {
+            "source_id": { "match": "exact", "value": "67890" },
+            "name": { "match": "exact", "value": "Cordoba Cup" },
+            "city": { "match": "exact", "value": "Cordoba" },
+            "country_code": { "match": "exact", "value": "AR" },
+            "starts_at": { "match": "exact", "value": "2026-04-01" }
+          }
+        }
+      }
+    },
+    {
+      "id": "event_catalog_script_upcoming_subdomain",
+      "pipeline": "smoothcomp.event_catalog",
+      "description": "Upcoming events on a regional Smoothcomp subdomain.",
+      "tags": ["subdomain"],
+      "request": { "pipeline": "smoothcomp.event_catalog", "country": "US", "event_type": "upcoming" },
+      "snapshots": [
+        { "id": "snap_ec_2", "resource_type": "event_catalog_html", "status_code": 200, "file": "fixtures/event_catalog/script_upcoming_subdomain_fixture.html" }
+      ],
+      "expectations": {
+        "events": {
+          "4201": {
+            "source_url": { "match": "exact", "value": "https://americas.smoothcomp.com/en/event/4201" },
+            "name": { "match": "exact", "value": "US Nationals West" },
+            "country_code": { "match": "exact", "value": "US" },
+            "status": { "match": "exact", "value": "scheduled" },
+            "starts_at": { "match": "exact", "value": "2026-08-03" }
+          },
+          "4202": {
+            "source_url": { "match": "exact", "value": "https://americas.smoothcomp.com/en/event/4202" },
+            "name": { "match": "exact", "value": "Canada Open East" },
+            "country": { "match": "exact", "value": "Canada" },
+            "status": { "match": "exact", "value": "scheduled" }
+          }
+        }
+      }
+    },
+    {
+      "id": "event_catalog_html_cards_brazil",
+      "pipeline": "smoothcomp.event_catalog",
+      "description": "HTML card fallback without embedded event array.",
+      "request": { "pipeline": "smoothcomp.event_catalog", "country": "BR", "event_type": "past" },
+      "snapshots": [
+        { "id": "snap_ec_3", "resource_type": "event_catalog_html", "status_code": 200, "file": "fixtures/event_catalog/html_cards_brazil_fixture.html" }
+      ],
+      "expectations": {
+        "events": {
+          "4301": {
+            "name": { "match": "exact", "value": "Rio Regional" },
+            "city": { "match": "exact", "value": "Rio de Janeiro" },
+            "country": { "match": "exact", "value": "Brazil" },
+            "country_code": { "match": "exact", "value": "BR" },
+            "status": { "match": "exact", "value": "completed" },
+            "starts_at": { "match": "source_not_visible" }
+          },
+          "4302": {
+            "name": { "match": "exact", "value": "Curitiba Open" },
+            "city": { "match": "exact", "value": "Curitiba" },
+            "country_code": { "match": "exact", "value": "BR" },
+            "starts_at": { "match": "source_not_visible" }
+          }
+        }
+      }
+    },
+    {
+      "id": "event_catalog_html_cards_uae_subdomain",
+      "pipeline": "smoothcomp.event_catalog",
+      "description": "HTML cards with absolute URLs on uae.smoothcomp.com.",
+      "tags": ["subdomain"],
+      "request": { "pipeline": "smoothcomp.event_catalog", "country": "AE", "event_type": "upcoming" },
+      "snapshots": [
+        { "id": "snap_ec_4", "resource_type": "event_catalog_html", "status_code": 200, "file": "fixtures/event_catalog/html_cards_uae_fixture.html" }
+      ],
+      "expectations": {
+        "events": {
+          "4401": {
+            "source_url": { "match": "exact", "value": "https://uae.smoothcomp.com/en/event/4401" },
+            "name": { "match": "exact", "value": "Dubai Challenge" },
+            "country": { "match": "exact", "value": "United Arab Emirates" },
+            "country_code": { "match": "exact", "value": "AE" }
+          },
+          "4402": {
+            "source_url": { "match": "exact", "value": "https://uae.smoothcomp.com/en/event/4402" },
+            "name": { "match": "exact", "value": "Abu Dhabi Youth Cup" },
+            "status": { "match": "exact", "value": "scheduled" }
+          }
+        }
+      }
+    },
+    {
+      "id": "event_catalog_script_mixed_countries",
+      "pipeline": "smoothcomp.event_catalog",
+      "description": "Past event script payload across multiple country codes.",
+      "request": { "pipeline": "smoothcomp.event_catalog", "country": "", "event_type": "past" },
+      "snapshots": [
+        { "id": "snap_ec_5", "resource_type": "event_catalog_html", "status_code": 200, "file": "fixtures/event_catalog/script_past_mixed_fixture.html" }
+      ],
+      "expectations": {
+        "events": {
+          "4501": {
+            "name": { "match": "exact", "value": "London Winter Open" },
+            "country": { "match": "exact", "value": "United Kingdom" },
+            "country_code": { "match": "exact", "value": "GB" },
+            "starts_at": { "match": "exact", "value": "2026-01-12" }
+          },
+          "4502": {
+            "name": { "match": "exact", "value": "Stockholm Grappling Cup" },
+            "country": { "match": "exact", "value": "Sweden" },
+            "country_code": { "match": "exact", "value": "SE" }
+          }
+        }
+      }
+    },
+    {
+      "id": "event_detail_rich_primary",
+      "pipeline": "smoothcomp.event_detail",
+      "description": "JSON-LD plus info panels and CMS payloads.",
+      "request": { "pipeline": "smoothcomp.event_detail", "event_id": "25258", "event_url": "https://smoothcomp.com/en/event/25258" },
+      "snapshots": [
+        { "id": "snap_ed_1", "resource_type": "event_detail_html", "status_code": 200, "source_url": "https://smoothcomp.com/en/event/25258", "file": "../event_detail/event_detail_fixture.html" },
+        { "id": "snap_ed_1_panels", "resource_type": "event_info_panels_json", "status_code": 200, "file": "../event_detail/event_info_panels_fixture.json" },
+        { "id": "snap_ed_1_cms", "resource_type": "event_cms_json", "status_code": 200, "file": "../event_detail/event_cms_fixture.json" }
+      ],
+      "expectations": {
+        "events": {
+          "25258": {
+            "source_url": { "match": "exact", "value": "https://smoothcomp.com/en/event/25258" },
+            "name": { "match": "exact", "value": "South American Open 2026" },
+            "description": { "match": "exact", "value": "Regional championship fixture" },
+            "venue_name": { "match": "exact", "value": "Polideportivo Central" },
+            "city": { "match": "exact", "value": "Buenos Aires" },
+            "country": { "match": "exact", "value": "Argentina" },
+            "organizer_name": { "match": "exact", "value": "Smooth Events Latam" },
+            "attributes.registration_open": { "match": "exact", "value": "true" }
+          }
+        }
+      }
+    },
+    {
+      "id": "event_detail_html_only_subdomain",
+      "pipeline": "smoothcomp.event_detail",
+      "description": "HTML-only event page on a regional subdomain.",
+      "tags": ["subdomain", "partial-source"],
+      "request": { "pipeline": "smoothcomp.event_detail", "event_id": "6301", "event_url": "https://americas.smoothcomp.com/en/event/6301" },
+      "snapshots": [
+        { "id": "snap_ed_2", "resource_type": "event_detail_html", "status_code": 200, "source_url": "https://americas.smoothcomp.com/en/event/6301", "file": "fixtures/event_detail/html_only_subdomain_fixture.html" }
+      ],
+      "expectations": {
+        "events": {
+          "6301": {
+            "source_id": { "match": "exact", "value": "6301" },
+            "source_url": { "match": "exact", "value": "https://americas.smoothcomp.com/en/event/6301" },
+            "name": { "match": "exact", "value": "California State Open" },
+            "image_url": { "match": "exact", "value": "https://americas.smoothcomp.com/media/event6301.jpg" },
+            "description": { "match": "source_not_visible" },
+            "organizer_name": { "match": "source_not_visible" },
+            "country": { "match": "source_not_visible" }
+          }
+        }
+      }
+    },
+    {
+      "id": "event_detail_panels_unavailable",
+      "pipeline": "smoothcomp.event_detail",
+      "description": "Optional info panels endpoint unavailable, base HTML still parseable.",
+      "request": { "pipeline": "smoothcomp.event_detail", "event_id": "6302", "event_url": "https://smoothcomp.com/en/event/6302" },
+      "snapshots": [
+        { "id": "snap_ed_3", "resource_type": "event_detail_html", "status_code": 200, "source_url": "https://smoothcomp.com/en/event/6302", "file": "fixtures/event_detail/panels_unavailable_fixture.html" },
+        { "id": "snap_ed_3_panels", "resource_type": "event_info_panels_json", "status_code": 404, "file": "fixtures/event_detail/unavailable_fixture.json" }
+      ],
+      "expectations": {
+        "events": {
+          "6302": {
+            "name": { "match": "exact", "value": "Nordic Invitational" },
+            "starts_at": { "match": "exact", "value": "2026-09-09" },
+            "venue_name": { "match": "exact", "value": "Arena Nord" },
+            "country": { "match": "exact", "value": "Norway" },
+            "organizer_name": { "match": "exact", "value": "Nordic BJJ Federation" }
+          }
+        },
+        "warnings": {
+          "required": [
+            { "code": "event_info_panels_unavailable", "subject_type": "event", "subject_id": "6302" }
+          ]
+        }
+      }
+    },
+    {
+      "id": "event_detail_cms_parse_failure",
+      "pipeline": "smoothcomp.event_detail",
+      "description": "Optional CMS payload is malformed and should downgrade to warning.",
+      "request": { "pipeline": "smoothcomp.event_detail", "event_id": "6303", "event_url": "https://smoothcomp.com/en/event/6303" },
+      "snapshots": [
+        { "id": "snap_ed_4", "resource_type": "event_detail_html", "status_code": 200, "source_url": "https://smoothcomp.com/en/event/6303", "file": "fixtures/event_detail/cms_parse_failure_fixture.html" },
+        { "id": "snap_ed_4_cms", "resource_type": "event_cms_json", "status_code": 200, "file": "fixtures/event_detail/invalid_fixture.json" }
+      ],
+      "expectations": {
+        "events": {
+          "6303": {
+            "name": { "match": "exact", "value": "Iberia Cup" },
+            "description": { "match": "exact", "value": "Summer event" },
+            "venue_name": { "match": "exact", "value": "Pabellon Norte" },
+            "city": { "match": "exact", "value": "Madrid" },
+            "country": { "match": "exact", "value": "Spain" },
+            "organizer_name": { "match": "exact", "value": "Iberia Jiu-Jitsu League" }
+          }
+        },
+        "warnings": {
+          "required": [
+            { "code": "event_cms_parse_failed", "subject_type": "event", "subject_id": "6303" }
+          ]
+        }
+      }
+    },
+    {
+      "id": "event_detail_visible_description_not_parsed",
+      "pipeline": "smoothcomp.event_detail",
+      "description": "Visible page-body description is currently ignored by the parser.",
+      "request": { "pipeline": "smoothcomp.event_detail", "event_id": "6304", "event_url": "https://smoothcomp.com/en/event/6304" },
+      "snapshots": [
+        { "id": "snap_ed_5", "resource_type": "event_detail_html", "status_code": 200, "source_url": "https://smoothcomp.com/en/event/6304", "file": "fixtures/event_detail/visible_description_not_parsed_fixture.html" }
+      ],
+      "expectations": {
+        "events": {
+          "6304": {
+            "name": { "match": "exact", "value": "Visible Description Open" },
+            "description": { "match": "exact", "value": "This description is visible in the page body.", "mismatch_category": "PARSER_DRIFT" },
+            "image_url": { "match": "exact", "value": "https://smoothcomp.com/media/event6304.jpg" }
+          }
+        }
+      }
+    },
+    {
+      "id": "athlete_profile_rich_history",
+      "pipeline": "smoothcomp.athlete_profile_enrichment",
+      "description": "Profile with labels, legend stats and event history.",
+      "request": { "pipeline": "smoothcomp.athlete_profile_enrichment", "profile_id": "7788", "profile_url": "https://smoothcomp.com/en/profile/7788" },
+      "snapshots": [
+        { "id": "snap_ap_1", "resource_type": "athlete_profile_html", "status_code": 200, "source_url": "https://smoothcomp.com/en/profile/7788", "file": "../athletes/athlete_profile_fixture.html" },
+        { "id": "snap_ap_1_events", "resource_type": "athlete_profile_events_json", "status_code": 200, "file": "../athletes/athlete_profile_events_fixture.json" }
+      ],
+      "expectations": {
+        "people": {
+          "7788": {
+            "full_name": { "match": "exact", "value": "Maria Silva" },
+            "country": { "match": "exact", "value": "Brazil" },
+            "country_code": { "match": "exact", "value": "BR" },
+            "age": { "match": "exact", "value": "27" },
+            "belt_rank": { "match": "exact", "value": "Brown belt" },
+            "organization_source_id": { "match": "exact", "value": "academy_name:alliance-sao-paulo" },
+            "attributes.total_wins": { "match": "exact", "value": "18" },
+            "attributes.competition_total_wins": { "match": "exact", "value": "1" }
+          }
+        },
+        "organizations": {
+          "academy_name:alliance-sao-paulo": {
+            "name": { "match": "exact", "value": "Alliance Sao Paulo" },
+            "kind": { "match": "exact", "value": "academy" }
+          }
+        },
+        "events": {
+          "25258": { "name": { "match": "exact", "value": "South American Open 2026" }, "status": { "match": "exact", "value": "completed" } },
+          "30001": { "name": { "match": "exact", "value": "Rio Grand Prix 2026" }, "status": { "match": "exact", "value": "scheduled" } }
+        }
+      }
+    },
+    {
+      "id": "athlete_profile_sparse_public",
+      "pipeline": "smoothcomp.athlete_profile_enrichment",
+      "description": "Sparse public profile with only visible name and image.",
+      "tags": ["partial-source"],
+      "request": { "pipeline": "smoothcomp.athlete_profile_enrichment", "profile_id": "8801", "profile_url": "https://smoothcomp.com/en/profile/8801" },
+      "snapshots": [
+        { "id": "snap_ap_2", "resource_type": "athlete_profile_html", "status_code": 200, "source_url": "https://smoothcomp.com/en/profile/8801", "file": "fixtures/athletes/profile_sparse_public_fixture.html" }
+      ],
+      "expectations": {
+        "people": {
+          "8801": {
+            "full_name": { "match": "exact", "value": "John Doe" },
+            "profile_url": { "match": "exact", "value": "https://smoothcomp.com/en/profile/8801" },
+            "image_url": { "match": "exact", "value": "https://smoothcomp.com/media/profiles/8801.jpg" },
+            "country": { "match": "source_not_visible" },
+            "age": { "match": "source_not_visible" },
+            "belt_rank": { "match": "source_not_visible" },
+            "organization_source_id": { "match": "source_not_visible" }
+          }
+        }
+      }
+    },
+    {
+      "id": "athlete_profile_flag_country_club",
+      "pipeline": "smoothcomp.athlete_profile_enrichment",
+      "description": "Country inferred from flag icon title and academy from club-name.",
+      "request": { "pipeline": "smoothcomp.athlete_profile_enrichment", "profile_id": "8802", "profile_url": "https://smoothcomp.com/en/profile/8802" },
+      "snapshots": [
+        { "id": "snap_ap_3", "resource_type": "athlete_profile_html", "status_code": 200, "source_url": "https://smoothcomp.com/en/profile/8802", "file": "fixtures/athletes/profile_flag_country_fixture.html" }
+      ],
+      "expectations": {
+        "people": {
+          "8802": {
+            "full_name": { "match": "exact", "value": "Ana Costa" },
+            "country": { "match": "exact", "value": "Portugal" },
+            "country_code": { "match": "exact", "value": "PT" },
+            "age": { "match": "exact", "value": "19" },
+            "organization_source_id": { "match": "exact", "value": "academy_name:gracie-lisboa" }
+          }
+        },
+        "organizations": {
+          "academy_name:gracie-lisboa": {
+            "name": { "match": "exact", "value": "Gracie Lisboa" }
+          }
+        }
+      }
+    },
+    {
+      "id": "athlete_profile_table_stats",
+      "pipeline": "smoothcomp.athlete_profile_enrichment",
+      "description": "Stats visible in table rows rather than legend lists.",
+      "request": { "pipeline": "smoothcomp.athlete_profile_enrichment", "profile_id": "8803", "profile_url": "https://smoothcomp.com/en/profile/8803" },
+      "snapshots": [
+        { "id": "snap_ap_4", "resource_type": "athlete_profile_html", "status_code": 200, "source_url": "https://smoothcomp.com/en/profile/8803", "file": "fixtures/athletes/profile_table_stats_fixture.html" }
+      ],
+      "expectations": {
+        "people": {
+          "8803": {
+            "full_name": { "match": "exact", "value": "Marco Rossi" },
+            "country": { "match": "exact", "value": "Italy" },
+            "country_code": { "match": "exact", "value": "IT" },
+            "belt_rank": { "match": "exact", "value": "Blue belt" },
+            "attributes.total_wins": { "match": "exact", "value": "6" },
+            "attributes.total_losses": { "match": "exact", "value": "2" }
+          }
+        }
+      }
+    },
+    {
+      "id": "athlete_profile_list_stats",
+      "pipeline": "smoothcomp.athlete_profile_enrichment",
+      "description": "Label:value list layout with academy, age and birth year.",
+      "request": { "pipeline": "smoothcomp.athlete_profile_enrichment", "profile_id": "8804", "profile_url": "https://smoothcomp.com/en/profile/8804" },
+      "snapshots": [
+        { "id": "snap_ap_5", "resource_type": "athlete_profile_html", "status_code": 200, "source_url": "https://smoothcomp.com/en/profile/8804", "file": "fixtures/athletes/profile_list_stats_fixture.html" }
+      ],
+      "expectations": {
+        "people": {
+          "8804": {
+            "full_name": { "match": "exact", "value": "Camila Reyes" },
+            "country": { "match": "exact", "value": "Chile" },
+            "age": { "match": "exact", "value": "31" },
+            "birth_year": { "match": "exact", "value": "1995" },
+            "belt_rank": { "match": "exact", "value": "Purple belt" },
+            "organization_source_id": { "match": "exact", "value": "academy_name:atos-santiago" }
+          }
+        }
+      }
+    },
+    {
+      "id": "athlete_profile_events_unavailable_warning",
+      "pipeline": "smoothcomp.athlete_profile_enrichment",
+      "description": "Profile parses but paginated events API is unavailable.",
+      "request": { "pipeline": "smoothcomp.athlete_profile_enrichment", "profile_id": "8805", "profile_url": "https://smoothcomp.com/en/profile/8805" },
+      "snapshots": [
+        { "id": "snap_ap_6", "resource_type": "athlete_profile_html", "status_code": 200, "source_url": "https://smoothcomp.com/en/profile/8805", "file": "fixtures/athletes/profile_events_unavailable_fixture.html" },
+        { "id": "snap_ap_6_events", "resource_type": "athlete_profile_events_json", "status_code": 503, "file": "fixtures/athletes/profile_events_unavailable.json" }
+      ],
+      "expectations": {
+        "people": {
+          "8805": {
+            "full_name": { "match": "exact", "value": "Pedro Lima" },
+            "country": { "match": "exact", "value": "Brazil" },
+            "organization_source_id": { "match": "exact", "value": "academy_name:dream-art-rio" }
+          }
+        },
+        "warnings": {
+          "required": [
+            { "code": "athlete_profile_events_unavailable", "subject_type": "person", "subject_id": "8805" }
+          ]
+        }
+      }
+    },
+    {
+      "id": "athlete_profile_middle_name_affiliation",
+      "pipeline": "smoothcomp.athlete_profile_enrichment",
+      "description": "Affiliation label should normalize to academy organization.",
+      "request": { "pipeline": "smoothcomp.athlete_profile_enrichment", "profile_id": "8806", "profile_url": "https://smoothcomp.com/en/profile/8806" },
+      "snapshots": [
+        { "id": "snap_ap_7", "resource_type": "athlete_profile_html", "status_code": 200, "source_url": "https://smoothcomp.com/en/profile/8806", "file": "fixtures/athletes/profile_middle_name_affiliation_fixture.html" }
+      ],
+      "expectations": {
+        "people": {
+          "8806": {
+            "given_name": { "match": "exact", "value": "Luis" },
+            "family_name": { "match": "exact", "value": "Miguel Torres" },
+            "country": { "match": "exact", "value": "Peru" },
+            "country_code": { "match": "exact", "value": "PE" },
+            "age": { "match": "exact", "value": "24" },
+            "organization_source_id": { "match": "exact", "value": "academy_name:checkmat-lima" }
+          }
+        }
+      }
+    },
+    {
+      "id": "athlete_profile_fightlist_derived_stats",
+      "pipeline": "smoothcomp.athlete_profile_enrichment",
+      "description": "Wins and losses derived from visible match list rather than summary labels.",
+      "request": { "pipeline": "smoothcomp.athlete_profile_enrichment", "profile_id": "8807", "profile_url": "https://smoothcomp.com/en/profile/8807" },
+      "snapshots": [
+        { "id": "snap_ap_8", "resource_type": "athlete_profile_html", "status_code": 200, "source_url": "https://smoothcomp.com/en/profile/8807", "file": "fixtures/athletes/profile_fightlist_derived_fixture.html" }
+      ],
+      "expectations": {
+        "people": {
+          "8807": {
+            "full_name": { "match": "exact", "value": "Sarah Klein" },
+            "country": { "match": "exact", "value": "Germany" },
+            "organization_source_id": { "match": "exact", "value": "academy_name:berlin-grappling" },
+            "attributes.total_wins": { "match": "exact", "value": "2" },
+            "attributes.total_losses": { "match": "exact", "value": "1" }
+          }
+        }
+      }
+    },
+    {
+      "id": "athlete_profile_birth_only",
+      "pipeline": "smoothcomp.athlete_profile_enrichment",
+      "description": "Birth year visible without age or affiliation.",
+      "tags": ["partial-source"],
+      "request": { "pipeline": "smoothcomp.athlete_profile_enrichment", "profile_id": "8808", "profile_url": "https://smoothcomp.com/en/profile/8808" },
+      "snapshots": [
+        { "id": "snap_ap_9", "resource_type": "athlete_profile_html", "status_code": 200, "source_url": "https://smoothcomp.com/en/profile/8808", "file": "fixtures/athletes/profile_birth_only_fixture.html" }
+      ],
+      "expectations": {
+        "people": {
+          "8808": {
+            "full_name": { "match": "exact", "value": "Mateo Alvarez" },
+            "country": { "match": "exact", "value": "Argentina" },
+            "country_code": { "match": "exact", "value": "AR" },
+            "birth_year": { "match": "exact", "value": "2007" },
+            "age": { "match": "source_not_visible" },
+            "organization_source_id": { "match": "source_not_visible" }
+          }
+        }
+      }
+    },
+    {
+      "id": "athlete_profile_upcoming_only",
+      "pipeline": "smoothcomp.athlete_profile_enrichment",
+      "description": "Profile with an upcoming-only events feed.",
+      "request": { "pipeline": "smoothcomp.athlete_profile_enrichment", "profile_id": "8809", "profile_url": "https://smoothcomp.com/en/profile/8809" },
+      "snapshots": [
+        { "id": "snap_ap_10", "resource_type": "athlete_profile_html", "status_code": 200, "source_url": "https://smoothcomp.com/en/profile/8809", "file": "fixtures/athletes/profile_upcoming_only_fixture.html" },
+        { "id": "snap_ap_10_events", "resource_type": "athlete_profile_events_json", "status_code": 200, "file": "fixtures/athletes/profile_upcoming_only_events.json" }
+      ],
+      "expectations": {
+        "people": {
+          "8809": {
+            "full_name": { "match": "exact", "value": "Olivia Johnson" },
+            "country": { "match": "exact", "value": "United States" },
+            "country_code": { "match": "exact", "value": "US" },
+            "organization_source_id": { "match": "exact", "value": "academy_name:aoj-costa-mesa" }
+          }
+        },
+        "events": {
+          "91001": {
+            "name": { "match": "exact", "value": "West Coast Trials" },
+            "status": { "match": "exact", "value": "scheduled" }
+          }
+        }
+      }
+    },
+    {
+      "id": "athlete_profile_alt_classes",
+      "pipeline": "smoothcomp.athlete_profile_enrichment",
+      "description": "Alternative CSS classes for name, avatar and stat items.",
+      "request": { "pipeline": "smoothcomp.athlete_profile_enrichment", "profile_id": "8810", "profile_url": "https://smoothcomp.com/en/profile/8810" },
+      "snapshots": [
+        { "id": "snap_ap_11", "resource_type": "athlete_profile_html", "status_code": 200, "source_url": "https://smoothcomp.com/en/profile/8810", "file": "fixtures/athletes/profile_alt_classes_fixture.html" }
+      ],
+      "expectations": {
+        "people": {
+          "8810": {
+            "full_name": { "match": "exact", "value": "Nina Petrov" },
+            "country": { "match": "exact", "value": "Serbia" },
+            "age": { "match": "exact", "value": "29" },
+            "organization_source_id": { "match": "exact", "value": "academy_name:kimura-belgrade" }
+          }
+        }
+      }
+    },
+    {
+      "id": "athlete_profile_no_academy",
+      "pipeline": "smoothcomp.athlete_profile_enrichment",
+      "description": "Country and age visible, no affiliation visible.",
+      "tags": ["partial-source"],
+      "request": { "pipeline": "smoothcomp.athlete_profile_enrichment", "profile_id": "8811", "profile_url": "https://smoothcomp.com/en/profile/8811" },
+      "snapshots": [
+        { "id": "snap_ap_12", "resource_type": "athlete_profile_html", "status_code": 200, "source_url": "https://smoothcomp.com/en/profile/8811", "file": "fixtures/athletes/profile_no_academy_fixture.html" }
+      ],
+      "expectations": {
+        "people": {
+          "8811": {
+            "full_name": { "match": "exact", "value": "Kenji Sato" },
+            "country": { "match": "exact", "value": "Japan" },
+            "country_code": { "match": "exact", "value": "JP" },
+            "age": { "match": "exact", "value": "34" },
+            "organization_source_id": { "match": "source_not_visible" }
+          }
+        }
+      }
+    },
+    {
+      "id": "athlete_match_history_rich_methods",
+      "pipeline": "smoothcomp.athlete_profile_enrichment",
+      "description": "Structured profile events feed with match-level outcomes, methods and opponents.",
+      "request": { "pipeline": "smoothcomp.athlete_profile_enrichment", "profile_id": "9900", "profile_url": "https://smoothcomp.com/en/profile/9900" },
+      "snapshots": [
+        { "id": "snap_am_1_html", "resource_type": "athlete_profile_html", "status_code": 200, "source_url": "https://smoothcomp.com/en/profile/9900", "file": "../athletes/athlete_profile_match_history_profile_fixture.html" },
+        { "id": "snap_am_1_events", "resource_type": "athlete_profile_events_json", "status_code": 200, "file": "../athletes/athlete_profile_match_history_fixture.json" }
+      ],
+      "expectations": {
+        "people": {
+          "9900": {
+            "full_name": { "match": "exact", "value": "Rafael Costa" },
+            "country": { "match": "exact", "value": "Brazil" },
+            "organization_source_id": { "match": "exact", "value": "academy_name:costa-jj" }
+          }
+        },
+        "matches": {
+          "9001": {
+            "event_source_id": { "match": "exact", "value": "7101" },
+            "athlete_source_id": { "match": "exact", "value": "9900" },
+            "opponent_source_id": { "match": "exact", "value": "athlete:9901" },
+            "opponent_name": { "match": "exact", "value": "Leo Kim" },
+            "division": { "match": "exact", "value": "Men" },
+            "weight_class": { "match": "exact", "value": "-82 kg" },
+            "outcome": { "match": "exact", "value": "win" },
+            "finish_method": { "match": "exact", "value": "submission" },
+            "score_text": { "match": "exact", "value": "2-0" },
+            "round_label": { "match": "exact", "value": "Quarterfinal" }
+          },
+          "9002": {
+            "opponent_name": { "match": "exact", "value": "Bruno Lima" },
+            "outcome": { "match": "exact", "value": "loss" },
+            "finish_method": { "match": "exact", "value": "points" }
+          },
+          "9003": {
+            "opponent_name": { "match": "exact", "value": "Mika Sato" },
+            "outcome": { "match": "exact", "value": "win" },
+            "finish_method": { "match": "source_not_visible" },
+            "score_text": { "match": "exact", "value": "4-2" }
+          }
+        },
+        "match_summaries": {
+          "9900": {
+            "scope": { "match": "exact", "value": "profile_events" },
+            "confidence": { "match": "exact", "value": "medium" },
+            "total_matches": { "match": "exact", "value": "3" },
+            "total_wins": { "match": "exact", "value": "2" },
+            "total_losses": { "match": "exact", "value": "1" },
+            "wins_by_submission": { "match": "exact", "value": "1" },
+            "losses_by_points": { "match": "exact", "value": "1" }
+          }
+        },
+        "warnings": {
+          "required": [
+            { "code": "match_finish_method_missing", "subject_type": "match", "subject_id": "9003" }
+          ]
+        }
+      }
+    },
+    {
+      "id": "athlete_match_history_partial_visibility",
+      "pipeline": "smoothcomp.athlete_profile_enrichment",
+      "description": "Match history with walkover and hidden opponent identity.",
+      "tags": ["partial-source"],
+      "request": { "pipeline": "smoothcomp.athlete_profile_enrichment", "profile_id": "8812", "profile_url": "https://smoothcomp.com/en/profile/8812" },
+      "snapshots": [
+        { "id": "snap_am_2_html", "resource_type": "athlete_profile_html", "status_code": 200, "source_url": "https://smoothcomp.com/en/profile/8812", "file": "fixtures/athletes/profile_sparse_public_fixture.html" },
+        { "id": "snap_am_2_events", "resource_type": "athlete_profile_events_json", "status_code": 200, "file": "../athletes/athlete_profile_match_partial_fixture.json" }
+      ],
+      "expectations": {
+        "matches": {
+          "9201": {
+            "outcome": { "match": "exact", "value": "walkover" },
+            "finish_method": { "match": "exact", "value": "walkover" },
+            "opponent_name": { "match": "source_not_visible" }
+          },
+          "9202": {
+            "outcome": { "match": "exact", "value": "loss" },
+            "finish_method": { "match": "exact", "value": "decision" },
+            "opponent_name": { "match": "source_not_visible" }
+          }
+        },
+        "match_summaries": {
+          "8812": {
+            "total_matches": { "match": "exact", "value": "2" },
+            "total_wins": { "match": "exact", "value": "0" },
+            "total_losses": { "match": "exact", "value": "1" },
+            "losses_by_decision": { "match": "exact", "value": "1" }
+          }
+        },
+        "warnings": {
+          "required": [
+            { "code": "match_opponent_hidden", "subject_type": "match", "subject_id": "9201" },
+            { "code": "match_opponent_hidden", "subject_type": "match", "subject_id": "9202" }
+          ]
+        }
+      }
+    },
+    {
+      "id": "athlete_match_history_summary_mismatch_warning",
+      "pipeline": "smoothcomp.athlete_profile_enrichment",
+      "description": "Profile counters and derived match totals disagree and should emit a reconciliation warning.",
+      "request": { "pipeline": "smoothcomp.athlete_profile_enrichment", "profile_id": "9900", "profile_url": "https://smoothcomp.com/en/profile/9900" },
+      "snapshots": [
+        { "id": "snap_am_3_html", "resource_type": "athlete_profile_html", "status_code": 200, "source_url": "https://smoothcomp.com/en/profile/9900", "file": "../athletes/athlete_profile_match_history_mismatch_profile_fixture.html" },
+        { "id": "snap_am_3_events", "resource_type": "athlete_profile_events_json", "status_code": 200, "file": "../athletes/athlete_profile_match_history_fixture.json" }
+      ],
+      "expectations": {
+        "match_summaries": {
+          "9900": {
+            "total_matches": { "match": "exact", "value": "3" },
+            "total_wins": { "match": "exact", "value": "2" },
+            "total_losses": { "match": "exact", "value": "1" }
+          }
+        },
+        "warnings": {
+          "required": [
+            { "code": "match_finish_method_missing", "subject_type": "match", "subject_id": "9003" },
+            { "code": "match_summary_inconsistent_with_profile", "subject_type": "person", "subject_id": "9900" }
+          ]
+        }
+      }
+    },
+    {
+      "id": "event_participants_rich_club_id",
+      "pipeline": "smoothcomp.event_participants",
+      "description": "Club ID based organization with weights and seeding.",
+      "request": { "pipeline": "smoothcomp.event_participants", "event_id": "5101", "event_name": "Buenos Aires Open 2026", "event_url": "https://smoothcomp.com/en/event/5101" },
+      "snapshots": [
+        { "id": "snap_ep_1", "resource_type": "event_participants_json", "status_code": 200, "file": "../participants/event_participants_fixture.json" }
+      ],
+      "expectations": {
+        "events": {
+          "5101": {
+            "name": { "match": "exact", "value": "Buenos Aires Open 2026" }
+          }
+        },
+        "organizations": {
+          "club:99": {
+            "name": { "match": "exact", "value": "Alpha Team" },
+            "country_code": { "match": "exact", "value": "AR" }
+          }
+        },
+        "people": {
+          "athlete:5001": {
+            "full_name": { "match": "exact", "value": "Juan Perez" },
+            "country": { "match": "exact", "value": "Argentina" },
+            "country_code": { "match": "exact", "value": "AR" },
+            "profile_url": { "match": "exact", "value": "https://smoothcomp.com/en/profile/5001" },
+            "age": { "match": "exact", "value": "28", "mismatch_category": "NORMALIZATION_BUG" },
+            "attributes.age": { "match": "exact", "value": "28" }
+          }
+        },
+        "registrations": {
+          "registration:1": {
+            "division": { "match": "exact", "value": "Men" },
+            "age_category": { "match": "exact", "value": "Adults" },
+            "rank": { "match": "exact", "value": "Beginner" },
+            "weight_class": { "match": "exact", "value": "-70 kg" },
+            "actual_weight": { "match": "exact", "value": "69.5" },
+            "seed": { "match": "exact", "value": "2" }
+          }
+        }
+      }
+    },
+    {
+      "id": "event_participants_affiliation_only",
+      "pipeline": "smoothcomp.event_participants",
+      "description": "Affiliation ID fallback when no club ID is present.",
+      "request": { "pipeline": "smoothcomp.event_participants", "event_id": "5102", "event_name": "Masters Challenge", "event_url": "https://smoothcomp.com/en/event/5102" },
+      "snapshots": [
+        { "id": "snap_ep_2", "resource_type": "event_participants_json", "status_code": 200, "file": "fixtures/participants/participants_affiliation_only_fixture.json" }
+      ],
+      "expectations": {
+        "organizations": {
+          "affiliation:501": {
+            "name": { "match": "exact", "value": "Alliance HQ" }
+          }
+        },
+        "people": {
+          "athlete:6101": {
+            "full_name": { "match": "exact", "value": "Julia Ferreira" },
+            "country": { "match": "exact", "value": "Brazil" },
+            "age": { "match": "exact", "value": "35", "mismatch_category": "NORMALIZATION_BUG" },
+            "organization_source_id": { "match": "exact", "value": "affiliation:501" }
+          }
+        },
+        "registrations": {
+          "registration:11": {
+            "division": { "match": "exact", "value": "Women" },
+            "age_category": { "match": "exact", "value": "Masters" },
+            "rank": { "match": "exact", "value": "Intermediate" },
+            "weight_class": { "match": "exact", "value": "-64 kg" }
+          }
+        }
+      }
+    },
+    {
+      "id": "event_participants_club_name_fallback",
+      "pipeline": "smoothcomp.event_participants",
+      "description": "Name-based organization fallback when provider IDs are absent.",
+      "request": { "pipeline": "smoothcomp.event_participants", "event_id": "5103", "event_name": "Junior Open", "event_url": "https://smoothcomp.com/en/event/5103" },
+      "snapshots": [
+        { "id": "snap_ep_3", "resource_type": "event_participants_json", "status_code": 200, "file": "fixtures/participants/participants_club_name_fallback_fixture.json" }
+      ],
+      "expectations": {
+        "organizations": {
+          "club_name:nova-uniao-manaus": {
+            "name": { "match": "exact", "value": "Nova Uniao Manaus" }
+          }
+        },
+        "people": {
+          "athlete:6201": {
+            "full_name": { "match": "exact", "value": "Tiago Souza" },
+            "organization_source_id": { "match": "exact", "value": "club_name:nova-uniao-manaus" },
+            "age": { "match": "exact", "value": "17", "mismatch_category": "NORMALIZATION_BUG" }
+          }
+        }
+      }
+    },
+    {
+      "id": "event_participants_partial_country",
+      "pipeline": "smoothcomp.event_participants",
+      "description": "Mixed source completeness for country fields.",
+      "tags": ["partial-source"],
+      "request": { "pipeline": "smoothcomp.event_participants", "event_id": "5104", "event_name": "Nordic Novice Cup", "event_url": "https://smoothcomp.com/en/event/5104" },
+      "snapshots": [
+        { "id": "snap_ep_4", "resource_type": "event_participants_json", "status_code": 200, "file": "fixtures/participants/participants_partial_country_fixture.json" }
+      ],
+      "expectations": {
+        "people": {
+          "athlete:6301": {
+            "full_name": { "match": "exact", "value": "Eva Nilsson" },
+            "country": { "match": "source_not_visible" },
+            "age": { "match": "exact", "value": "22", "mismatch_category": "NORMALIZATION_BUG" }
+          },
+          "athlete:6302": {
+            "country": { "match": "exact", "value": "Sweden" },
+            "country_code": { "match": "exact", "value": "SE" }
+          }
+        },
+        "organizations": {
+          "club:88": {
+            "name": { "match": "exact", "value": "Team Phoenix" }
+          }
+        }
+      }
+    },
+    {
+      "id": "event_participants_seeded_mixed",
+      "pipeline": "smoothcomp.event_participants",
+      "description": "Seeded registrations with mixed club and affiliation fallback.",
+      "request": { "pipeline": "smoothcomp.event_participants", "event_id": "5105", "event_name": "Iberia Pro", "event_url": "https://smoothcomp.com/en/event/5105" },
+      "snapshots": [
+        { "id": "snap_ep_5", "resource_type": "event_participants_json", "status_code": 200, "file": "fixtures/participants/participants_seeded_mixed_fixture.json" }
+      ],
+      "expectations": {
+        "organizations": {
+          "club:77": { "name": { "match": "exact", "value": "ZR Team Madrid" } },
+          "affiliation_name:independent": { "name": { "match": "exact", "value": "Independent" } }
+        },
+        "people": {
+          "athlete:6401": {
+            "country": { "match": "exact", "value": "Spain" },
+            "organization_source_id": { "match": "exact", "value": "club:77" }
+          },
+          "athlete:6402": {
+            "country": { "match": "exact", "value": "Portugal" },
+            "organization_source_id": { "match": "exact", "value": "affiliation_name:independent" }
+          }
+        },
+        "registrations": {
+          "registration:41": { "seed": { "match": "exact", "value": "1" }, "actual_weight": { "match": "exact", "value": "81.4" } },
+          "registration:42": { "seed": { "match": "exact", "value": "3" }, "actual_weight": { "match": "exact", "value": "80.9" } }
+        }
+      }
+    },
+    {
+      "id": "academy_catalog_basic_detail",
+      "pipeline": "smoothcomp.academy_catalog",
+      "description": "Catalog plus full academy detail page with stats and socials.",
+      "request": { "pipeline": "smoothcomp.academy_catalog", "country": "AR" },
+      "snapshots": [
+        { "id": "snap_ac_1_catalog", "resource_type": "academy_catalog_html", "status_code": 200, "file": "../academies/academy_catalog_fixture.html" },
+        { "id": "snap_ac_1_detail", "resource_type": "academy_detail_html", "resource_key": "111", "status_code": 200, "source_url": "https://smoothcomp.com/en/club/111/red-shield", "file": "../academies/academy_detail_fixture.html" }
+      ],
+      "expectations": {
+        "organizations": {
+          "111": {
+            "name": { "match": "exact", "value": "Red Shield Academy" },
+            "kind": { "match": "exact", "value": "academy" },
+            "country_code": { "match": "exact", "value": "AR" },
+            "website_url": { "match": "exact", "value": "https://redshield.example.com" },
+            "attributes.athlete_count": { "match": "exact", "value": "38" },
+            "attributes.instagram_url": { "match": "exact", "value": "https://instagram.com/redshieldjj" }
+          },
+          "222": {
+            "name": { "match": "exact", "value": "Blue Wave JJ" },
+            "country_code": { "match": "exact", "value": "AR" }
+          }
+        },
+        "warnings": {
+          "required": [
+            { "code": "academy_detail_missing", "subject_type": "organization", "subject_id": "222" }
+          ]
+        }
+      }
+    },
+    {
+      "id": "academy_catalog_img_alt_cover",
+      "pipeline": "smoothcomp.academy_catalog",
+      "description": "Catalog name from image alt, detail image from cover fallback.",
+      "request": { "pipeline": "smoothcomp.academy_catalog", "country": "PT" },
+      "snapshots": [
+        { "id": "snap_ac_2_catalog", "resource_type": "academy_catalog_html", "status_code": 200, "file": "fixtures/academies/academy_catalog_img_alt_fixture.html" },
+        { "id": "snap_ac_2_detail", "resource_type": "academy_detail_html", "resource_key": "9102", "status_code": 200, "source_url": "https://smoothcomp.com/en/club/9102/blue-ocean", "file": "fixtures/academies/academy_detail_cover_fixture.html" }
+      ],
+      "expectations": {
+        "organizations": {
+          "9102": {
+            "name": { "match": "exact", "value": "Blue Ocean JJ" },
+            "image_url": { "match": "exact", "value": "https://smoothcomp.com/uploads/blue-ocean-cover.png" },
+            "description": { "match": "exact", "value": "Coastal competition academy." },
+            "attributes.athlete_count": { "match": "exact", "value": "54" }
+          }
+        }
+      }
+    },
+    {
+      "id": "academy_catalog_missing_detail_warning",
+      "pipeline": "smoothcomp.academy_catalog",
+      "description": "Catalog capture exists but no detail snapshot was stored.",
+      "request": { "pipeline": "smoothcomp.academy_catalog", "country": "CL" },
+      "snapshots": [
+        { "id": "snap_ac_3_catalog", "resource_type": "academy_catalog_html", "status_code": 200, "file": "fixtures/academies/academy_catalog_missing_detail_fixture.html" }
+      ],
+      "expectations": {
+        "organizations": {
+          "9103": {
+            "name": { "match": "exact", "value": "Mountain Top JJ" },
+            "country_code": { "match": "exact", "value": "CL" }
+          }
+        },
+        "warnings": {
+          "required": [
+            { "code": "academy_detail_missing", "subject_type": "organization", "subject_id": "9103" }
+          ]
+        }
+      }
+    },
+    {
+      "id": "academy_catalog_country_visible_not_parsed",
+      "pipeline": "smoothcomp.academy_catalog",
+      "description": "Detail page visibly contains location text but parser does not normalize country.",
+      "request": { "pipeline": "smoothcomp.academy_catalog", "country": "ES" },
+      "snapshots": [
+        { "id": "snap_ac_4_catalog", "resource_type": "academy_catalog_html", "status_code": 200, "file": "fixtures/academies/academy_catalog_country_visible_fixture.html" },
+        { "id": "snap_ac_4_detail", "resource_type": "academy_detail_html", "resource_key": "9104", "status_code": 200, "source_url": "https://smoothcomp.com/en/club/9104/madrid-roll", "file": "fixtures/academies/academy_detail_country_visible_fixture.html" }
+      ],
+      "expectations": {
+        "organizations": {
+          "9104": {
+            "name": { "match": "exact", "value": "Madrid Rollers" },
+            "country": { "match": "exact", "value": "Spain", "mismatch_category": "PARSER_DRIFT" },
+            "country_code": { "match": "exact", "value": "ES" },
+            "attributes.total_wins": { "match": "exact", "value": "44" }
+          }
+        }
+      }
+    },
+    {
+      "id": "academy_catalog_skip_finder_and_mixed_detail",
+      "pipeline": "smoothcomp.academy_catalog",
+      "description": "Finder link must be skipped; one academy has detail and one is missing detail.",
+      "request": { "pipeline": "smoothcomp.academy_catalog", "country": "US" },
+      "snapshots": [
+        { "id": "snap_ac_5_catalog", "resource_type": "academy_catalog_html", "status_code": 200, "file": "fixtures/academies/academy_catalog_skip_finder_fixture.html" },
+        { "id": "snap_ac_5_detail", "resource_type": "academy_detail_html", "resource_key": "9105", "status_code": 200, "source_url": "https://smoothcomp.com/en/club/9105/red-mat", "file": "fixtures/academies/academy_detail_red_mat_fixture.html" }
+      ],
+      "expectations": {
+        "organizations": {
+          "9105": {
+            "name": { "match": "exact", "value": "Red Mat Academy" },
+            "website_url": { "match": "exact", "value": "https://redmat.example.com" },
+            "attributes.athlete_count": { "match": "exact", "value": "33" }
+          },
+          "9106": {
+            "name": { "match": "exact", "value": "White Mat Academy" }
+          }
+        },
+        "warnings": {
+          "required": [
+            { "code": "academy_detail_missing", "subject_type": "organization", "subject_id": "9106" }
+          ]
+        }
+      }
+    }
+  ]
+}
