@@ -62,6 +62,7 @@ func parseAcademyDetailHTML(body []byte, sourceURL, sourceID, fallbackCountryCod
 		SourceID:        sourceID,
 		Name:            firstNonEmpty(strings.TrimSpace(doc.Find("h1").First().Text()), strings.TrimSpace(doc.Find(".club-name").First().Text())),
 		Kind:            "academy",
+		Country:         extractAcademyCountry(doc),
 		CountryCode:     strings.ToUpper(strings.TrimSpace(fallbackCountryCode)),
 		Slug:            slugify(firstNonEmpty(strings.TrimSpace(doc.Find("h1").First().Text()), strings.TrimSpace(doc.Find(".club-name").First().Text()))),
 		ImageURL:        firstNonEmpty(absAttr(doc.Find("img.club-logo").First(), "src", sourceURL), absAttr(doc.Find("img.club-cover").First(), "src", sourceURL)),
@@ -148,4 +149,67 @@ func extractClubIDFromURL(rawURL string) string {
 		}
 	}
 	return extractIDFromURL(rawURL)
+}
+
+func extractAcademyCountry(doc *goquery.Document) string {
+	for _, selector := range []string{
+		".club-country",
+		".club-location",
+		".club-location-text",
+		".location",
+		"[data-testid='club-country']",
+		"[data-testid='club-location']",
+	} {
+		if country := countryFromLocationText(doc.Find(selector).First().Text()); country != "" {
+			return country
+		}
+	}
+
+	locationText := ""
+	doc.Find("div, li, p, span").EachWithBreak(func(_ int, selection *goquery.Selection) bool {
+		text := normalizeVisibleText(selection.Text())
+		if text == "" {
+			return true
+		}
+		lower := strings.ToLower(text)
+		if !strings.Contains(lower, "country:") && !strings.Contains(lower, "location:") {
+			return true
+		}
+		locationText = text
+		return false
+	})
+
+	return countryFromLocationText(locationText)
+}
+
+func countryFromLocationText(raw string) string {
+	raw = normalizeVisibleText(raw)
+	if raw == "" {
+		return ""
+	}
+
+	lower := strings.ToLower(raw)
+	for _, prefix := range []string{"country:", "location:"} {
+		if strings.HasPrefix(lower, prefix) {
+			raw = normalizeVisibleText(raw[len(prefix):])
+			break
+		}
+	}
+
+	for _, separator := range []string{",", "|", "/", "•"} {
+		if strings.Contains(raw, separator) {
+			parts := strings.Split(raw, separator)
+			raw = normalizeVisibleText(parts[len(parts)-1])
+		}
+	}
+	for _, separator := range []string{" - ", " – ", " — "} {
+		if strings.Contains(raw, separator) {
+			parts := strings.Split(raw, separator)
+			raw = normalizeVisibleText(parts[len(parts)-1])
+		}
+	}
+	if raw == "" || strings.IndexFunc(raw, func(r rune) bool { return r >= '0' && r <= '9' }) >= 0 {
+		return ""
+	}
+	return raw
 }

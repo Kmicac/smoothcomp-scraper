@@ -242,7 +242,7 @@
     {
       "id": "event_detail_visible_description_not_parsed",
       "pipeline": "smoothcomp.event_detail",
-      "description": "Visible page-body description is currently ignored by the parser.",
+      "description": "Visible page-body description is normalized when JSON-LD is absent.",
       "request": { "pipeline": "smoothcomp.event_detail", "event_id": "6304", "event_url": "https://smoothcomp.com/en/event/6304" },
       "snapshots": [
         { "id": "snap_ed_5", "resource_type": "event_detail_html", "status_code": 200, "source_url": "https://smoothcomp.com/en/event/6304", "file": "fixtures/event_detail/visible_description_not_parsed_fixture.html" }
@@ -251,7 +251,7 @@
         "events": {
           "6304": {
             "name": { "match": "exact", "value": "Visible Description Open" },
-            "description": { "match": "exact", "value": "This description is visible in the page body.", "mismatch_category": "PARSER_DRIFT" },
+            "description": { "match": "exact", "value": "This description is visible in the page body." },
             "image_url": { "match": "exact", "value": "https://smoothcomp.com/media/event6304.jpg" }
           }
         }
@@ -684,7 +684,7 @@
             "country": { "match": "exact", "value": "Argentina" },
             "country_code": { "match": "exact", "value": "AR" },
             "profile_url": { "match": "exact", "value": "https://smoothcomp.com/en/profile/5001" },
-            "age": { "match": "exact", "value": "28", "mismatch_category": "NORMALIZATION_BUG" },
+            "age": { "match": "exact", "value": "28" },
             "attributes.age": { "match": "exact", "value": "28" }
           }
         },
@@ -718,7 +718,7 @@
           "athlete:6101": {
             "full_name": { "match": "exact", "value": "Julia Ferreira" },
             "country": { "match": "exact", "value": "Brazil" },
-            "age": { "match": "exact", "value": "35", "mismatch_category": "NORMALIZATION_BUG" },
+            "age": { "match": "exact", "value": "35" },
             "organization_source_id": { "match": "exact", "value": "affiliation:501" }
           }
         },
@@ -750,7 +750,7 @@
           "athlete:6201": {
             "full_name": { "match": "exact", "value": "Tiago Souza" },
             "organization_source_id": { "match": "exact", "value": "club_name:nova-uniao-manaus" },
-            "age": { "match": "exact", "value": "17", "mismatch_category": "NORMALIZATION_BUG" }
+            "age": { "match": "exact", "value": "17" }
           }
         }
       }
@@ -769,7 +769,7 @@
           "athlete:6301": {
             "full_name": { "match": "exact", "value": "Eva Nilsson" },
             "country": { "match": "source_not_visible" },
-            "age": { "match": "exact", "value": "22", "mismatch_category": "NORMALIZATION_BUG" }
+            "age": { "match": "exact", "value": "22" }
           },
           "athlete:6302": {
             "country": { "match": "exact", "value": "Sweden" },
@@ -888,7 +888,7 @@
     {
       "id": "academy_catalog_country_visible_not_parsed",
       "pipeline": "smoothcomp.academy_catalog",
-      "description": "Detail page visibly contains location text but parser does not normalize country.",
+      "description": "Detail page location text is normalized into organization.country.",
       "request": { "pipeline": "smoothcomp.academy_catalog", "country": "ES" },
       "snapshots": [
         { "id": "snap_ac_4_catalog", "resource_type": "academy_catalog_html", "status_code": 200, "file": "fixtures/academies/academy_catalog_country_visible_fixture.html" },
@@ -898,7 +898,7 @@
         "organizations": {
           "9104": {
             "name": { "match": "exact", "value": "Madrid Rollers" },
-            "country": { "match": "exact", "value": "Spain", "mismatch_category": "PARSER_DRIFT" },
+            "country": { "match": "exact", "value": "Spain" },
             "country_code": { "match": "exact", "value": "ES" },
             "attributes.total_wins": { "match": "exact", "value": "44" }
           }

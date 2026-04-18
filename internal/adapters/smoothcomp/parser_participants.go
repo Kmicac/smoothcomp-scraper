@@ -92,8 +92,12 @@ func parseParticipantsJSON(body []byte, eventID, eventName, eventURL, snapshotID
 				RawReferenceIDs:      []string{snapshotID},
 				Attributes: map[string]string{
 					"affiliation_name": strings.TrimSpace(reg.AffiliationName),
-					"age":              strconv.Itoa(reg.Age),
 				},
+			}
+			if reg.Age > 0 {
+				age := reg.Age
+				person.Age = &age
+				person.Attributes["age"] = strconv.Itoa(reg.Age)
 			}
 			if reg.Birth != "" {
 				if year, err := strconv.Atoi(reg.Birth); err == nil {

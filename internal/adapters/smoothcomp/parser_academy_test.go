@@ -45,6 +45,18 @@ func TestParseAcademyDetailHTML(t *testing.T) {
 	}
 }
 
+func TestParseAcademyDetailHTMLExtractsCountryFromVisibleLocation(t *testing.T) {
+	body := mustReadFixture(t, "audit", "fixtures", "academies", "academy_detail_country_visible_fixture.html")
+
+	org, err := parseAcademyDetailHTML(body, "https://smoothcomp.com/en/club/9104/madrid-roll", "9104", "ES", "snap_academy_detail_country")
+	if err != nil {
+		t.Fatalf("parse fixture: %v", err)
+	}
+	if org.Country != "Spain" {
+		t.Fatalf("unexpected academy country: %s", org.Country)
+	}
+}
+
 func TestAcademyCatalogPipelineNormalizeWarnsOnMissingDetail(t *testing.T) {
 	pipeline := NewAcademyCatalogPipeline(NewClient(platformconfig.SmoothcompConfig{
 		BaseURL: "https://smoothcomp.com",

@@ -2,7 +2,7 @@ package contract
 
 import "time"
 
-const CurrentContractVersion = "smoothcomp.adapter.contract.v1"
+const CurrentContractVersion = "smoothcomp-published-envelope-v1"
 
 type Envelope struct {
 	ContractVersion      string            `json:"contract_version"`

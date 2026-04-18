@@ -88,6 +88,9 @@ func parseEventDetailHTML(body []byte, fallbackEventID, fallbackEventURL, snapsh
 			strings.TrimSpace(doc.Find(".page-title").First().Text()),
 		)
 	}
+	if event.Description == "" {
+		event.Description = extractVisibleEventDescription(doc)
+	}
 	if event.ImageURL == "" {
 		event.ImageURL = firstNonEmpty(
 			strings.TrimSpace(attrOrEmpty(doc.Find("meta[property='og:image']").First(), "content")),
@@ -193,4 +196,42 @@ func parseEventJSONLDDocument(doc *goquery.Document) *eventJSONLDDocument {
 func isSportsEvent(eventType string) bool {
 	normalized := strings.ToLower(strings.TrimSpace(eventType))
 	return normalized == "sportsevent" || normalized == "event"
+}
+
+func extractVisibleEventDescription(doc *goquery.Document) string {
+	for _, selector := range []string{
+		".event-description",
+		".event-description-text",
+		".event-page-description",
+		".event-info__description",
+		"#event-description",
+		"[data-testid='event-description']",
+		".event-body .description",
+		".event-content .description",
+		".event-info .description",
+	} {
+		if text := normalizeVisibleText(doc.Find(selector).First().Text()); text != "" {
+			return text
+		}
+	}
+
+	description := ""
+	doc.Find("div, section, article, p").EachWithBreak(func(_ int, selection *goquery.Selection) bool {
+		attrs := strings.ToLower(strings.TrimSpace(selection.AttrOr("class", "") + " " + selection.AttrOr("id", "")))
+		parentAttrs := strings.ToLower(strings.TrimSpace(selection.Parent().AttrOr("class", "") + " " + selection.Parent().AttrOr("id", "")))
+		if !strings.Contains(attrs, "description") {
+			return true
+		}
+		if !strings.Contains(attrs, "event") && !strings.Contains(parentAttrs, "event") {
+			return true
+		}
+		text := normalizeVisibleText(selection.Text())
+		if text == "" {
+			return true
+		}
+		description = text
+		return false
+	})
+
+	return description
 }

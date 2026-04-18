@@ -32,4 +32,15 @@ func TestParseParticipantsJSON(t *testing.T) {
 	if registrations[0].Division != "Men" {
 		t.Fatalf("unexpected division: %s", registrations[0].Division)
 	}
+
+	var juanAge *int
+	for _, person := range people {
+		if person.SourceID == "athlete:5001" {
+			juanAge = person.Age
+			break
+		}
+	}
+	if juanAge == nil || *juanAge != 28 {
+		t.Fatalf("expected normalized participant age 28, got %v", juanAge)
+	}
 }

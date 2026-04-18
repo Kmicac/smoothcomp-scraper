@@ -31,6 +31,22 @@ func TestParseEventDetailHTML(t *testing.T) {
 	if parsed.Event.OrganizerName != "Smooth Events Latam" {
 		t.Fatalf("unexpected organizer: %s", parsed.Event.OrganizerName)
 	}
+	if parsed.Event.Description != "Regional championship fixture" {
+		t.Fatalf("unexpected description: %s", parsed.Event.Description)
+	}
+}
+
+func TestParseEventDetailHTMLFallsBackToVisibleDescription(t *testing.T) {
+	body := mustReadFixture(t, "audit", "fixtures", "event_detail", "visible_description_not_parsed_fixture.html")
+
+	parsed, err := parseEventDetailHTML(body, "6304", "https://smoothcomp.com/en/event/6304", "snap_event_html_visible_description")
+	if err != nil {
+		t.Fatalf("parse fixture: %v", err)
+	}
+
+	if parsed.Event.Description != "This description is visible in the page body." {
+		t.Fatalf("unexpected visible description fallback: %s", parsed.Event.Description)
+	}
 }
 
 func TestEventDetailPipelineNormalize(t *testing.T) {

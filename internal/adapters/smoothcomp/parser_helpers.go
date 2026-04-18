@@ -36,3 +36,7 @@ func attrOrEmpty(selection *goquery.Selection, attr string) string {
 	}
 	return strings.TrimSpace(selection.AttrOr(attr, ""))
 }
+
+func normalizeVisibleText(value string) string {
+	return strings.Join(strings.Fields(strings.TrimSpace(value)), " ")
+}

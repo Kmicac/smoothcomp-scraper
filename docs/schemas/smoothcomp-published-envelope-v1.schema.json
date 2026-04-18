@@ -1,0 +1,278 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/kmicac/smoothcomp-scraper/docs/schemas/smoothcomp-published-envelope-v1.schema.json",
+  "title": "Smoothcomp Published Envelope v1",
+  "type": "object",
+  "required": [
+    "contract_version",
+    "provider",
+    "pipeline",
+    "generated_at",
+    "scope"
+  ],
+  "properties": {
+    "contract_version": {
+      "const": "smoothcomp-published-envelope-v1"
+    },
+    "provider": {
+      "type": "string",
+      "const": "smoothcomp"
+    },
+    "pipeline": {
+      "type": "string",
+      "enum": [
+        "smoothcomp.event_catalog",
+        "smoothcomp.event_participants",
+        "smoothcomp.event_detail",
+        "smoothcomp.athlete_profile_enrichment",
+        "smoothcomp.academy_catalog"
+      ]
+    },
+    "job_id": {
+      "type": "string"
+    },
+    "correlation_id": {
+      "type": "string"
+    },
+    "parser_version": {
+      "type": "string"
+    },
+    "normalization_version": {
+      "type": "string"
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "scope": {
+      "type": "object",
+      "properties": {
+        "country": { "type": "string" },
+        "event_type": { "type": "string" },
+        "event_id": { "type": "string" },
+        "profile_id": { "type": "string" }
+      },
+      "additionalProperties": true
+    },
+    "events": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/event" }
+    },
+    "organizations": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/organization" }
+    },
+    "people": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/person" }
+    },
+    "registrations": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/registration" }
+    },
+    "matches": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/match" }
+    },
+    "match_summaries": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/match_summary" }
+    },
+    "warnings": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/warning" }
+    },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
+    }
+  },
+  "additionalProperties": true,
+  "$defs": {
+    "event": {
+      "type": "object",
+      "required": ["source_id"],
+      "properties": {
+        "source_id": { "type": "string" },
+        "source_url": { "type": "string" },
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "image_url": { "type": "string" },
+        "city": { "type": "string" },
+        "country": { "type": "string" },
+        "country_code": { "type": "string" },
+        "venue_name": { "type": "string" },
+        "venue_address": { "type": "string" },
+        "organizer_name": { "type": "string" },
+        "status": { "type": "string" },
+        "starts_at": { "type": "string" },
+        "ends_at": { "type": "string" },
+        "raw_reference_ids": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "attributes": {
+          "type": "object",
+          "additionalProperties": { "type": "string" }
+        }
+      },
+      "additionalProperties": true
+    },
+    "organization": {
+      "type": "object",
+      "required": ["source_id", "name", "kind"],
+      "properties": {
+        "source_id": { "type": "string" },
+        "name": { "type": "string" },
+        "kind": { "type": "string" },
+        "country": { "type": "string" },
+        "country_code": { "type": "string" },
+        "slug": { "type": "string" },
+        "image_url": { "type": "string" },
+        "description": { "type": "string" },
+        "website_url": { "type": "string" },
+        "raw_reference_ids": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "attributes": {
+          "type": "object",
+          "additionalProperties": { "type": "string" }
+        }
+      },
+      "additionalProperties": true
+    },
+    "person": {
+      "type": "object",
+      "required": ["source_id"],
+      "properties": {
+        "source_id": { "type": "string" },
+        "given_name": { "type": "string" },
+        "family_name": { "type": "string" },
+        "full_name": { "type": "string" },
+        "country": { "type": "string" },
+        "country_code": { "type": "string" },
+        "gender": { "type": "string" },
+        "age": { "type": "integer" },
+        "belt_rank": { "type": "string" },
+        "birth_year": { "type": "integer" },
+        "profile_url": { "type": "string" },
+        "image_url": { "type": "string" },
+        "organization_source_id": { "type": "string" },
+        "raw_reference_ids": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "attributes": {
+          "type": "object",
+          "additionalProperties": { "type": "string" }
+        }
+      },
+      "additionalProperties": true
+    },
+    "registration": {
+      "type": "object",
+      "required": ["source_id", "event_source_id", "person_source_id"],
+      "properties": {
+        "source_id": { "type": "string" },
+        "event_source_id": { "type": "string" },
+        "person_source_id": { "type": "string" },
+        "organization_source_id": { "type": "string" },
+        "division": { "type": "string" },
+        "age_category": { "type": "string" },
+        "rank": { "type": "string" },
+        "weight_class": { "type": "string" },
+        "actual_weight": { "type": "number" },
+        "seed": { "type": "integer" },
+        "raw_reference_ids": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "attributes": {
+          "type": "object",
+          "additionalProperties": { "type": "string" }
+        }
+      },
+      "additionalProperties": true
+    },
+    "match": {
+      "type": "object",
+      "required": ["source_id"],
+      "properties": {
+        "source_id": { "type": "string" },
+        "source_url": { "type": "string" },
+        "event_source_id": { "type": "string" },
+        "event_name": { "type": "string" },
+        "athlete_source_id": { "type": "string" },
+        "opponent_source_id": { "type": "string" },
+        "opponent_name": { "type": "string" },
+        "opponent_country": { "type": "string" },
+        "division": { "type": "string" },
+        "age_category": { "type": "string" },
+        "rank": { "type": "string" },
+        "weight_class": { "type": "string" },
+        "outcome": { "type": "string" },
+        "finish_method": { "type": "string" },
+        "result_text": { "type": "string" },
+        "score_text": { "type": "string" },
+        "bracket_label": { "type": "string" },
+        "round_label": { "type": "string" },
+        "placement": { "type": "string" },
+        "confidence": { "type": "string" },
+        "starts_at": { "type": "string" },
+        "raw_reference_ids": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "attributes": {
+          "type": "object",
+          "additionalProperties": { "type": "string" }
+        }
+      },
+      "additionalProperties": true
+    },
+    "match_summary": {
+      "type": "object",
+      "required": ["athlete_source_id", "total_matches", "total_wins", "total_losses"],
+      "properties": {
+        "athlete_source_id": { "type": "string" },
+        "scope": { "type": "string" },
+        "confidence": { "type": "string" },
+        "total_matches": { "type": "integer" },
+        "total_wins": { "type": "integer" },
+        "total_losses": { "type": "integer" },
+        "wins_by_submission": { "type": "integer" },
+        "wins_by_points": { "type": "integer" },
+        "wins_by_decision": { "type": "integer" },
+        "wins_by_dq": { "type": "integer" },
+        "losses_by_submission": { "type": "integer" },
+        "losses_by_points": { "type": "integer" },
+        "losses_by_decision": { "type": "integer" },
+        "losses_by_dq": { "type": "integer" },
+        "raw_reference_ids": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "attributes": {
+          "type": "object",
+          "additionalProperties": { "type": "string" }
+        }
+      },
+      "additionalProperties": true
+    },
+    "warning": {
+      "type": "object",
+      "required": ["code", "message"],
+      "properties": {
+        "code": { "type": "string" },
+        "message": { "type": "string" },
+        "subject_type": { "type": "string" },
+        "subject_id": { "type": "string" },
+        "source_snapshot_id": { "type": "string" }
+      },
+      "additionalProperties": true
+    }
+  }
+}
