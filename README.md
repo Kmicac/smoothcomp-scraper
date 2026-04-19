@@ -6,10 +6,18 @@ This repository is an internal Smoothcomp ingestion adapter implemented in Go. I
 - raw snapshot capture
 - HTML/JSON parsing
 - technical normalization
+- source-level change detection
+- snapshot and publication deduplication
+- publication decisioning
 - ingestion job execution
 - internal operational APIs
 
 It is not a public scraper API and it is not the business-domain backend.
+
+Ownership is intentionally split:
+
+- Go owns source-level change detection, snapshot dedupe, normalized-result dedupe, publication dedupe, parser and normalization versioning, and deciding whether a new envelope should be published
+- Nest.js owns contract validation on receipt, import-run lifecycle, idempotent application to the domain model, canonical persistence, multitenancy, security, and audit of imported business state
 
 ## Production Execution Model
 
@@ -26,8 +34,9 @@ The job lifecycle is:
 3. The worker renews the lease while processing
 4. Raw provider responses are stored in `raw_snapshots`
 5. Technical normalization is stored in `normalized_results`
-6. Published importable output is stored in `published_results`
-7. The job either completes, gets rescheduled for retry, or reaches a terminal state
+6. Publication decision metadata is stored with the normalized result for every execution
+7. Published importable output is stored in `published_results` only when Go decides a new effective publication is warranted
+8. The job either completes, gets rescheduled for retry, or reaches a terminal state
 
 ## Architecture
 
@@ -74,9 +83,9 @@ Operational tables:
 - `raw_snapshots`
   Append-only per job attempt with hash-based idempotency
 - `normalized_results`
-  One canonical normalized output per job, updated idempotently by `job_id`
+  One canonical normalized output per job, updated idempotently by `job_id`, including `scope_key`, `source_snapshot_hash`, `normalized_hash`, and publication decision audit fields
 - `published_results`
-  One canonical published output per job, updated idempotently by `job_id`
+  One published envelope per effective publication, including `scope_key`, `source_snapshot_hash`, `normalized_hash`, `envelope_hash`, publication decision fields, and supersession lineage
 - `schedule_configs_v2`
   Internal scheduler configuration
 
@@ -128,10 +137,28 @@ Consistency rules in the current implementation:
   - `(job_id, attempt_number, resource_type, resource_key, sha256)`
 - normalized results are idempotent by `job_id`
 - published results are idempotent by `job_id`
-- normalized payloads store `payload_hash`
-- published payloads store `checksum`
+- latest effective publication is looked up by `(pipeline, scope_key)` ordered by `published_at DESC`
+- normalized results store a canonical `normalized_hash`
+- published results store a canonical `envelope_hash`
+- every normalized execution stores `publication_decision`, `publication_reason`, and `change_classification`
 
-This means a repeated execution of the same job can safely overwrite the canonical normalized/published record for that job while preserving attempt history and raw snapshots.
+Publication decisioning is explicit:
+
+- `NO_CHANGE` -> `SKIP_NO_CHANGE`
+- `CONTENT_CHANGED` -> `PUBLISH_CHANGED`
+- `NORMALIZATION_CHANGED` -> `PUBLISH_CHANGED`
+- `REPUBLISH_FORCED` -> `PUBLISH_FORCED`
+
+The adapter computes:
+
+- `source_snapshot_hash`
+  Stable hash of the fetched provider snapshot set for a single scope
+- `normalized_hash`
+  Stable hash of normalized semantic content after removing execution-local volatility such as snapshot ids, job ids, correlation ids, and timestamps
+- `envelope_hash`
+  Stable hash of the published envelope after publication-lineage metadata is added, excluding volatile delivery metadata such as `published_at`
+
+This means a repeated execution of the same job can safely overwrite the canonical normalized record for that job while preserving attempt history, and Go can avoid publishing a redundant envelope when the latest effective publication for the same scope has not materially changed.
 
 ## Internal API
 
@@ -143,6 +170,15 @@ Active internal endpoints:
 - `GET /internal/v1/jobs`
 - `GET /internal/v1/jobs/{id}`
 - `GET /internal/v1/publications/latest?pipeline=...`
+
+`GET /internal/v1/publications/latest` now accepts optional scope filters:
+
+- `country`
+- `event_type`
+- `event_id`
+- `profile_id`
+
+When scope filters are present, the lookup resolves the latest effective publication for that exact provider scope instead of the last publication for the whole pipeline.
 
 The API requires an internal token unless `ALLOW_INSECURE_INTERNAL_AUTH=true` is explicitly set. CORS is not enabled by default.
 
@@ -292,8 +328,9 @@ These packages are no longer the supported runtime path for day-to-day operation
 
 - Postgres is now wired, but production rollout still needs environment-specific operational packaging and deployment manifests
 - metrics export is still hook-oriented/log-oriented; there is not yet a Prometheus/OpenTelemetry adapter
-- the published contract is still adapter-oriented and should be finalized before Nest.js import semantics are locked
+- the adapter now decides publication at source level, but delivery orchestration into Nest is still a separate next step
 - provider coverage is broader now, but some Smoothcomp page variants may still require additional fixtures as new markup variations are discovered
 - the extraction audit is deterministic and reproducible, but it is still based on a curated corpus rather than large-scale live production sampling
 - athlete competitive records are currently strongest from profile-history sources; event-centric bracket/results pages still need archived fixture coverage before that path should be consumed downstream
 - `cmd/server` still exists for convenience and should not be the default production topology
+- concurrent jobs for the exact same scope can still race at publication time because there is not yet a dedicated per-scope publication lock or delivery outbox

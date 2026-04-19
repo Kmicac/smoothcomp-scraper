@@ -9,8 +9,10 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/kmicac/smoothcomp-scraper/internal/application/ingestion"
 	"github.com/kmicac/smoothcomp-scraper/internal/application/operations"
+	"github.com/kmicac/smoothcomp-scraper/internal/core/contract"
 	coreerrors "github.com/kmicac/smoothcomp-scraper/internal/core/errors"
 	"github.com/kmicac/smoothcomp-scraper/internal/core/job"
+	"github.com/kmicac/smoothcomp-scraper/internal/core/port"
 	platformconfig "github.com/kmicac/smoothcomp-scraper/internal/platform/config"
 	"github.com/kmicac/smoothcomp-scraper/internal/platform/httpx"
 	"go.uber.org/zap"
@@ -141,10 +143,25 @@ func (h *Handler) latestPublication(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, coreerrors.New(coreerrors.CategoryValidation, coreerrors.CodeInvalidRequest, "http.latest_publication", false, "pipeline query parameter is required", nil))
 		return
 	}
-	record, err := h.ops.LatestPublication(r.Context(), pipeline)
+	scope := contract.Scope{
+		Country:   r.URL.Query().Get("country"),
+		EventType: r.URL.Query().Get("event_type"),
+		EventID:   r.URL.Query().Get("event_id"),
+		ProfileID: r.URL.Query().Get("profile_id"),
+	}
+
+	var (
+		record *job.PublishedResult
+		err    error
+	)
+	if scope.Country != "" || scope.EventType != "" || scope.EventID != "" || scope.ProfileID != "" {
+		record, err = h.ops.LatestPublicationByScope(r.Context(), "smoothcomp", pipeline, scope)
+	} else {
+		record, err = h.ops.LatestPublication(r.Context(), pipeline)
+	}
 	if err != nil {
 		status := http.StatusInternalServerError
-		if errors.Is(err, gorm.ErrRecordNotFound) {
+		if errors.Is(err, gorm.ErrRecordNotFound) || errors.Is(err, port.ErrPublicationNotFound) {
 			status = http.StatusNotFound
 		}
 		writeError(w, status, err)

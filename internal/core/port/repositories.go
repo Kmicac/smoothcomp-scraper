@@ -2,10 +2,13 @@ package port
 
 import (
 	"context"
+	"errors"
 
 	"github.com/kmicac/smoothcomp-scraper/internal/core/contract"
 	"github.com/kmicac/smoothcomp-scraper/internal/core/job"
 )
+
+var ErrPublicationNotFound = errors.New("publication not found")
 
 type JobListFilter struct {
 	Limit int
@@ -30,6 +33,7 @@ type ResultRepository interface {
 	SaveNormalized(context.Context, *job.NormalizedResult) error
 	SavePublished(context.Context, *job.PublishedResult) error
 	GetLatestPublished(context.Context, job.Pipeline) (*job.PublishedResult, error)
+	GetLatestPublishedByScope(context.Context, job.Pipeline, string) (*job.PublishedResult, error)
 }
 
 type ScheduleRepository interface {
