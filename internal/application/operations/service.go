@@ -3,8 +3,10 @@ package operations
 import (
 	"context"
 
+	"github.com/kmicac/smoothcomp-scraper/internal/core/contract"
 	"github.com/kmicac/smoothcomp-scraper/internal/core/job"
 	"github.com/kmicac/smoothcomp-scraper/internal/core/port"
+	corepublication "github.com/kmicac/smoothcomp-scraper/internal/core/publication"
 )
 
 type Service struct {
@@ -35,4 +37,8 @@ func (s *Service) GetJob(ctx context.Context, id string) (*job.Job, error) {
 
 func (s *Service) LatestPublication(ctx context.Context, pipeline job.Pipeline) (*job.PublishedResult, error) {
 	return s.results.GetLatestPublished(ctx, pipeline)
+}
+
+func (s *Service) LatestPublicationByScope(ctx context.Context, provider string, pipeline job.Pipeline, scope contract.Scope) (*job.PublishedResult, error) {
+	return s.results.GetLatestPublishedByScope(ctx, pipeline, corepublication.ScopeKey(provider, pipeline, scope))
 }

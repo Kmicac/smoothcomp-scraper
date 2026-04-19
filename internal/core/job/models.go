@@ -11,6 +11,8 @@ import (
 type State string
 type Trigger string
 type Pipeline string
+type PublicationDecision string
+type ChangeClassification string
 
 const (
 	StatePending   State = "pending"
@@ -28,6 +30,15 @@ const (
 	PipelineSmoothcompEventDetail       Pipeline = "smoothcomp.event_detail"
 	PipelineSmoothcompAthleteProfile    Pipeline = "smoothcomp.athlete_profile_enrichment"
 	PipelineSmoothcompAcademyCatalog    Pipeline = "smoothcomp.academy_catalog"
+
+	PublicationDecisionSkipNoChange   PublicationDecision = "SKIP_NO_CHANGE"
+	PublicationDecisionPublishChanged PublicationDecision = "PUBLISH_CHANGED"
+	PublicationDecisionPublishForced  PublicationDecision = "PUBLISH_FORCED"
+
+	ChangeClassificationNoChange             ChangeClassification = "NO_CHANGE"
+	ChangeClassificationContentChanged       ChangeClassification = "CONTENT_CHANGED"
+	ChangeClassificationNormalizationChanged ChangeClassification = "NORMALIZATION_CHANGED"
+	ChangeClassificationRepublishForced      ChangeClassification = "REPUBLISH_FORCED"
 )
 
 type Request struct {
@@ -105,30 +116,48 @@ type RawSnapshot struct {
 }
 
 type NormalizedResult struct {
-	ID                   string            `json:"id"`
-	JobID                string            `json:"job_id"`
-	AttemptNumber        int               `json:"attempt_number"`
-	Provider             string            `json:"provider"`
-	Pipeline             Pipeline          `json:"pipeline"`
-	ParserVersion        string            `json:"parser_version"`
-	NormalizationVersion string            `json:"normalization_version"`
-	PayloadHash          string            `json:"payload_hash"`
-	CreatedAt            time.Time         `json:"created_at"`
-	Metadata             map[string]string `json:"metadata,omitempty"`
-	Payload              contract.Envelope `json:"payload"`
+	ID                   string               `json:"id"`
+	JobID                string               `json:"job_id"`
+	AttemptNumber        int                  `json:"attempt_number"`
+	Provider             string               `json:"provider"`
+	Pipeline             Pipeline             `json:"pipeline"`
+	ScopeKey             string               `json:"scope_key"`
+	ParserVersion        string               `json:"parser_version"`
+	NormalizationVersion string               `json:"normalization_version"`
+	ContractVersion      string               `json:"contract_version"`
+	SourceSnapshotHash   string               `json:"source_snapshot_hash"`
+	NormalizedHash       string               `json:"normalized_hash"`
+	PublicationDecision  PublicationDecision  `json:"publication_decision"`
+	PublicationReason    string               `json:"publication_reason"`
+	ChangeClassification ChangeClassification `json:"change_classification"`
+	ForcedRepublish      bool                 `json:"forced_republish"`
+	CreatedAt            time.Time            `json:"created_at"`
+	Metadata             map[string]string    `json:"metadata,omitempty"`
+	Payload              contract.Envelope    `json:"payload"`
 }
 
 type PublishedResult struct {
-	ID              string            `json:"id"`
-	JobID           string            `json:"job_id"`
-	AttemptNumber   int               `json:"attempt_number"`
-	Provider        string            `json:"provider"`
-	Pipeline        Pipeline          `json:"pipeline"`
-	ContractVersion string            `json:"contract_version"`
-	Checksum        string            `json:"checksum"`
-	PublishedAt     time.Time         `json:"published_at"`
-	Metadata        map[string]string `json:"metadata,omitempty"`
-	Payload         contract.Envelope `json:"payload"`
+	ID                      string               `json:"id"`
+	JobID                   string               `json:"job_id"`
+	AttemptNumber           int                  `json:"attempt_number"`
+	Provider                string               `json:"provider"`
+	Pipeline                Pipeline             `json:"pipeline"`
+	ScopeKey                string               `json:"scope_key"`
+	CorrelationID           string               `json:"correlation_id,omitempty"`
+	ParserVersion           string               `json:"parser_version"`
+	NormalizationVersion    string               `json:"normalization_version"`
+	ContractVersion         string               `json:"contract_version"`
+	SourceSnapshotHash      string               `json:"source_snapshot_hash"`
+	NormalizedHash          string               `json:"normalized_hash"`
+	EnvelopeHash            string               `json:"envelope_hash"`
+	PublicationDecision     PublicationDecision  `json:"publication_decision"`
+	PublicationReason       string               `json:"publication_reason"`
+	ChangeClassification    ChangeClassification `json:"change_classification"`
+	ForcedRepublish         bool                 `json:"forced_republish"`
+	SupersedesPublicationID string               `json:"supersedes_publication_id,omitempty"`
+	PublishedAt             time.Time            `json:"published_at"`
+	Metadata                map[string]string    `json:"metadata,omitempty"`
+	Payload                 contract.Envelope    `json:"payload"`
 }
 
 type Schedule struct {

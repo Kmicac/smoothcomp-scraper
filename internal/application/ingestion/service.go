@@ -228,20 +228,35 @@ func (w *Worker) RunOnce(ctx context.Context) (bool, error) {
 	}
 	normalizedPayload.JobID = record.ID
 
+	sourceSnapshotHash, err := computeSourceSnapshotHash(snapshots)
+	if err != nil {
+		failErr := coreerrors.New(coreerrors.CategoryInternal, coreerrors.CodeInternal, "ingestion.worker.source_snapshot_hash", true, "failed to compute source snapshot hash", err)
+		return true, w.finishFailure(ctx, record, failErr)
+	}
+
+	scopeKey := computeScopeKey(record.Provider, record.Pipeline, normalizedPayload.Scope)
+	normalizedHash, err := computeNormalizedHash(normalizedPayload)
+	if err != nil {
+		failErr := coreerrors.New(coreerrors.CategoryInternal, coreerrors.CodeInternal, "ingestion.worker.normalized_hash", true, "failed to compute normalized hash", err)
+		return true, w.finishFailure(ctx, record, failErr)
+	}
+
+	forcedRepublish := forceRepublish(record.Request)
+
 	normalized := &job.NormalizedResult{
 		ID:                   job.NewID("norm"),
 		JobID:                record.ID,
 		AttemptNumber:        record.AttemptCount,
 		Provider:             record.Provider,
 		Pipeline:             record.Pipeline,
+		ScopeKey:             scopeKey,
 		ParserVersion:        record.ParserVersion,
 		NormalizationVersion: record.NormalizationVersion,
+		ContractVersion:      normalizedPayload.ContractVersion,
+		SourceSnapshotHash:   sourceSnapshotHash,
+		NormalizedHash:       normalizedHash,
 		CreatedAt:            time.Now().UTC(),
 		Payload:              normalizedPayload,
-	}
-	if err := w.results.SaveNormalized(ctx, normalized); err != nil {
-		failErr := coreerrors.New(coreerrors.CategoryStorage, coreerrors.CodeStorageFailed, "ingestion.worker.save_normalized", true, "failed to store normalized result", err)
-		return true, w.finishFailure(ctx, record, failErr)
 	}
 
 	publishedPayload, err := pipeline.Publish(ctx, record.Request, normalizedPayload)
@@ -250,26 +265,126 @@ func (w *Worker) RunOnce(ctx context.Context) (bool, error) {
 	}
 	publishedPayload.JobID = record.ID
 
-	published := &job.PublishedResult{
-		ID:              job.NewID("pub"),
-		JobID:           record.ID,
-		AttemptNumber:   record.AttemptCount,
-		Provider:        record.Provider,
-		Pipeline:        record.Pipeline,
-		ContractVersion: publishedPayload.ContractVersion,
-		PublishedAt:     time.Now().UTC(),
-		Payload:         publishedPayload,
+	candidateMetadata := mergeEnvelopeMetadata(publishedPayload.Metadata, map[string]string{
+		envelopeMetadataScopeKey:           scopeKey,
+		envelopeMetadataSourceSnapshotHash: sourceSnapshotHash,
+		envelopeMetadataNormalizedHash:     normalizedHash,
+	})
+	if normalizedPayload.Scope.ProfileID != "" {
+		candidateMetadata[envelopeMetadataSourceProfileID] = normalizedPayload.Scope.ProfileID
 	}
-	if err := w.results.SavePublished(ctx, published); err != nil {
-		failErr := coreerrors.New(coreerrors.CategoryStorage, coreerrors.CodeStorageFailed, "ingestion.worker.save_published", true, "failed to store published result", err)
+	if normalizedPayload.Scope.EventID != "" {
+		candidateMetadata[envelopeMetadataSourceEventID] = normalizedPayload.Scope.EventID
+	}
+	if record.Request.Metadata != nil && record.Request.Metadata[requestMetadataImportRequestID] != "" {
+		candidateMetadata[envelopeMetadataImportRequestID] = record.Request.Metadata[requestMetadataImportRequestID]
+	}
+	publishedPayload.Metadata = candidateMetadata
+
+	envelopeHash, err := computeEnvelopeHash(publishedPayload)
+	if err != nil {
+		failErr := coreerrors.New(coreerrors.CategoryInternal, coreerrors.CodeInternal, "ingestion.worker.envelope_hash", true, "failed to compute envelope hash", err)
 		return true, w.finishFailure(ctx, record, failErr)
+	}
+
+	latestPublished, err := w.results.GetLatestPublishedByScope(ctx, record.Pipeline, scopeKey)
+	if err != nil && !errors.Is(err, port.ErrPublicationNotFound) {
+		failErr := coreerrors.New(coreerrors.CategoryStorage, coreerrors.CodeStorageFailed, "ingestion.worker.latest_published_by_scope", true, "failed to load latest published result for scope", err)
+		return true, w.finishFailure(ctx, record, failErr)
+	}
+	if errors.Is(err, port.ErrPublicationNotFound) {
+		latestPublished = nil
+	}
+
+	outcome := decidePublication(latestPublished, publicationCandidate{
+		ScopeKey:             scopeKey,
+		SourceSnapshotHash:   sourceSnapshotHash,
+		NormalizedHash:       normalizedHash,
+		EnvelopeHash:         envelopeHash,
+		ParserVersion:        record.ParserVersion,
+		NormalizationVersion: record.NormalizationVersion,
+		ContractVersion:      publishedPayload.ContractVersion,
+		ForcedRepublish:      forcedRepublish,
+	})
+
+	normalized.PublicationDecision = outcome.Decision
+	normalized.PublicationReason = outcome.Reason
+	normalized.ChangeClassification = outcome.Classification
+	normalized.ForcedRepublish = forcedRepublish
+	normalized.Metadata = mergeEnvelopeMetadata(normalizedPayload.Metadata, map[string]string{
+		envelopeMetadataScopeKey:             scopeKey,
+		envelopeMetadataSourceSnapshotHash:   sourceSnapshotHash,
+		envelopeMetadataNormalizedHash:       normalizedHash,
+		envelopeMetadataPublicationDecision:  string(outcome.Decision),
+		envelopeMetadataPublicationReason:    outcome.Reason,
+		envelopeMetadataChangeClassification: string(outcome.Classification),
+		envelopeMetadataForcedRepublish:      boolString(forcedRepublish),
+	})
+	if err := w.results.SaveNormalized(ctx, normalized); err != nil {
+		failErr := coreerrors.New(coreerrors.CategoryStorage, coreerrors.CodeStorageFailed, "ingestion.worker.save_normalized", true, "failed to store normalized result", err)
+		return true, w.finishFailure(ctx, record, failErr)
+	}
+
+	w.logger.Info("publication decision evaluated",
+		zap.String("job_id", record.ID),
+		zap.String("pipeline", string(record.Pipeline)),
+		zap.String("scope_key", scopeKey),
+		zap.String("publication_decision", string(outcome.Decision)),
+		zap.String("publication_reason", outcome.Reason),
+		zap.String("change_classification", string(outcome.Classification)),
+		zap.String("source_snapshot_hash", sourceSnapshotHash),
+		zap.String("normalized_hash", normalizedHash),
+		zap.String("envelope_hash", envelopeHash),
+		zap.Bool("forced_republish", forcedRepublish),
+	)
+
+	if outcome.Decision != job.PublicationDecisionSkipNoChange {
+		publishedAt := time.Now().UTC()
+		publishedPayload.Metadata = mergeEnvelopeMetadata(publishedPayload.Metadata, buildPublishedEnvelopeMetadata(
+			record.Request,
+			publishedPayload.Scope,
+			scopeKey,
+			sourceSnapshotHash,
+			normalizedHash,
+			envelopeHash,
+			outcome,
+			publishedAt,
+		))
+
+		published := &job.PublishedResult{
+			ID:                      job.NewID("pub"),
+			JobID:                   record.ID,
+			AttemptNumber:           record.AttemptCount,
+			Provider:                record.Provider,
+			Pipeline:                record.Pipeline,
+			ScopeKey:                scopeKey,
+			CorrelationID:           record.CorrelationID,
+			ParserVersion:           record.ParserVersion,
+			NormalizationVersion:    record.NormalizationVersion,
+			ContractVersion:         publishedPayload.ContractVersion,
+			SourceSnapshotHash:      sourceSnapshotHash,
+			NormalizedHash:          normalizedHash,
+			EnvelopeHash:            envelopeHash,
+			PublicationDecision:     outcome.Decision,
+			PublicationReason:       outcome.Reason,
+			ChangeClassification:    outcome.Classification,
+			ForcedRepublish:         forcedRepublish,
+			SupersedesPublicationID: outcome.SupersedesPublicationID,
+			PublishedAt:             publishedAt,
+			Metadata:                publishedPayload.Metadata,
+			Payload:                 publishedPayload,
+		}
+		if err := w.results.SavePublished(ctx, published); err != nil {
+			failErr := coreerrors.New(coreerrors.CategoryStorage, coreerrors.CodeStorageFailed, "ingestion.worker.save_published", true, "failed to store published result", err)
+			return true, w.finishFailure(ctx, record, failErr)
+		}
 	}
 
 	completed, err := w.jobs.Complete(ctx, job.Completion{
 		JobID:         record.ID,
 		AttemptNumber: record.AttemptCount,
 		WorkerID:      w.workerID,
-		Stats:         StatsFromEnvelope(len(snapshots), publishedPayload),
+		Stats:         StatsFromEnvelope(len(snapshots), normalizedPayload),
 		FinishedAt:    time.Now().UTC(),
 	})
 	if err != nil {
